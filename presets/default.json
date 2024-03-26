@@ -43,7 +43,7 @@
     ],
     "default_aspect_ratio": "1152*896",
     "checkpoint_downloads": {
-        "sd_xl_turbo_1.0_fp16.safetensors": "https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sd_xl_turbo_1.0_fp16.safetensors",
+        "sd_xl_turbo_1.0_fp16.safetensors": "https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sd_xl_turbo_1.0_fp16.safetensors"
     },
     "embeddings_downloads": {},
     "lora_downloads": {
