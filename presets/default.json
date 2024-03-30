@@ -1,6 +1,6 @@
 {
     "default_model": "sd_xl_turbo_1.0_fp16.safetensors",
-    "default_refiner": "None",
+    "default_refiner": "sd_xl_turbo_1.0_fp16.safetensors",
     "default_refiner_switch": 0.5,
     "default_loras": [
         [
