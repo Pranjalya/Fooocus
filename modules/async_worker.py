@@ -502,6 +502,9 @@ def worker():
         if len(goals) > 0:
             progressbar(async_task, 13, 'Image processing ...')
 
+        print(f"GOALS: {goals}")
+        print(f"UOV method: {uov_method}")
+
         if 'vary' in goals:
             if 'subtle' in uov_method:
                 denoising_strength = 0.5
