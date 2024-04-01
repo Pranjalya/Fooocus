@@ -657,6 +657,8 @@ def worker():
                 refiner_swap_method=refiner_swap_method
             )
 
+            print("VAE Candidate:", candidate_vae, candidate_vae_swap)
+
             latent_inpaint, latent_mask = core.encode_vae_inpaint(
                 mask=inpaint_pixel_mask,
                 vae=candidate_vae,
