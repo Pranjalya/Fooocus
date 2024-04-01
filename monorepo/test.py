@@ -72,6 +72,28 @@ def load_inpaint_images():
         inpaint_mask = erode_or_dilate(inpaint_mask, inpaint_erode_or_dilate)
 
     inpaint_image = HWC3(inpaint_image)
+    if isinstance(inpaint_image, np.ndarray) and isinstance(inpaint_mask, np.ndarray) \
+            and (np.any(inpaint_mask > 127) or len(outpaint_selections) > 0):
+        progressbar(async_task, 1, 'Downloading upscale models ...')
+        modules.config.downloading_upscale_model()
+        if inpaint_parameterized:
+            progressbar(async_task, 1, 'Downloading inpainter ...')
+            inpaint_head_model_path, inpaint_patch_model_path = modules.config.downloading_inpaint_models(
+                inpaint_engine)
+            base_model_additional_loras += [(inpaint_patch_model_path, 1.0)]
+            print(f'[Inpaint] Current inpaint model is {inpaint_patch_model_path}')
+            if refiner_model_name == 'None':
+                use_synthetic_refiner = True
+                refiner_switch = 0.8
+        else:
+            inpaint_head_model_path, inpaint_patch_model_path = None, None
+            print(f'[Inpaint] Parameterized inpaint is disabled.')
+        if inpaint_additional_prompt != '':
+            if prompt == '':
+                prompt = inpaint_additional_prompt
+            else:
+                prompt = inpaint_additional_prompt + '\n' + prompt
+        goals.append('inpaint')
 
 
 def expand_prompt():
@@ -142,99 +164,79 @@ def expand_prompt():
             t['uc'] = pipeline.clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
 
 
-def inpaint_goals(goals):
-    if 'inpaint' in goals:
-        # if len(outpaint_selections) > 0:
-        #     H, W, C = inpaint_image.shape
-        #     if 'top' in outpaint_selections:
-        #         inpaint_image = np.pad(inpaint_image, [[int(H * 0.3), 0], [0, 0], [0, 0]], mode='edge')
-        #         inpaint_mask = np.pad(inpaint_mask, [[int(H * 0.3), 0], [0, 0]], mode='constant',
-        #                                 constant_values=255)
-        #     if 'bottom' in outpaint_selections:
-        #         inpaint_image = np.pad(inpaint_image, [[0, int(H * 0.3)], [0, 0], [0, 0]], mode='edge')
-        #         inpaint_mask = np.pad(inpaint_mask, [[0, int(H * 0.3)], [0, 0]], mode='constant',
-        #                                 constant_values=255)
+def inpaint_goals(inpaint_strength=1.0):
+    denoising_strength = inpaint_strength
 
-        #     H, W, C = inpaint_image.shape
-        #     if 'left' in outpaint_selections:
-        #         inpaint_image = np.pad(inpaint_image, [[0, 0], [int(W * 0.3), 0], [0, 0]], mode='edge')
-        #         inpaint_mask = np.pad(inpaint_mask, [[0, 0], [int(W * 0.3), 0]], mode='constant',
-        #                                 constant_values=255)
-        #     if 'right' in outpaint_selections:
-        #         inpaint_image = np.pad(inpaint_image, [[0, 0], [0, int(W * 0.3)], [0, 0]], mode='edge')
-        #         inpaint_mask = np.pad(inpaint_mask, [[0, 0], [0, int(W * 0.3)]], mode='constant',
-        #                                 constant_values=255)
+    inpaint_worker.current_task = inpaint_worker.InpaintWorker(
+        image=inpaint_image,
+        mask=inpaint_mask,
+        use_fill=denoising_strength > 0.99,
+        k=inpaint_respective_field
+    )
 
-        #     inpaint_image = np.ascontiguousarray(inpaint_image.copy())
-        #     inpaint_mask = np.ascontiguousarray(inpaint_mask.copy())
-        #     inpaint_strength = 1.0
-        #     inpaint_respective_field = 1.0
+    progressbar(async_task, 13, 'VAE Inpaint encoding ...')
 
-        denoising_strength = inpaint_strength
+    inpaint_pixel_fill = core.numpy_to_pytorch(inpaint_worker.current_task.interested_fill)
+    inpaint_pixel_image = core.numpy_to_pytorch(inpaint_worker.current_task.interested_image)
+    inpaint_pixel_mask = core.numpy_to_pytorch(inpaint_worker.current_task.interested_mask)
 
-        inpaint_worker.current_task = inpaint_worker.InpaintWorker(
-            image=inpaint_image,
-            mask=inpaint_mask,
-            use_fill=denoising_strength > 0.99,
-            k=inpaint_respective_field
-        )
+    candidate_vae, candidate_vae_swap = pipeline.get_candidate_vae(
+        steps=steps,
+        switch=switch,
+        denoise=denoising_strength,
+        refiner_swap_method=refiner_swap_method
+    )
 
-        if debugging_inpaint_preprocessor:
-            yield_result(async_task, inpaint_worker.current_task.visualize_mask_processing(),
-                            do_not_show_finished_images=True)
-            return
+    latent_inpaint, latent_mask = core.encode_vae_inpaint(
+        mask=inpaint_pixel_mask,
+        vae=candidate_vae,
+        pixels=inpaint_pixel_image)
 
-        progressbar(async_task, 13, 'VAE Inpaint encoding ...')
+    latent_swap = None
 
-        inpaint_pixel_fill = core.numpy_to_pytorch(inpaint_worker.current_task.interested_fill)
-        inpaint_pixel_image = core.numpy_to_pytorch(inpaint_worker.current_task.interested_image)
-        inpaint_pixel_mask = core.numpy_to_pytorch(inpaint_worker.current_task.interested_mask)
+    progressbar(async_task, 13, 'VAE encoding ...')
+    latent_fill = core.encode_vae(
+        vae=candidate_vae,
+        pixels=inpaint_pixel_fill)['samples']
 
-        candidate_vae, candidate_vae_swap = pipeline.get_candidate_vae(
-            steps=steps,
-            switch=switch,
-            denoise=denoising_strength,
-            refiner_swap_method=refiner_swap_method
-        )
+    inpaint_worker.current_task.load_latent(
+        latent_fill=latent_fill, latent_mask=latent_mask, latent_swap=latent_swap)
 
-        latent_inpaint, latent_mask = core.encode_vae_inpaint(
-            mask=inpaint_pixel_mask,
-            vae=candidate_vae,
-            pixels=inpaint_pixel_image)
+    pipeline.final_unet = inpaint_worker.current_task.patch(
+        inpaint_head_model_path=inpaint_head_model_path,
+        inpaint_latent=latent_inpaint,
+        inpaint_latent_mask=latent_mask,
+        model=pipeline.final_unet
+    )
 
-        latent_swap = None
-        if candidate_vae_swap is not None:
-            progressbar(async_task, 13, 'VAE SD15 encoding ...')
-            latent_swap = core.encode_vae(
-                vae=candidate_vae_swap,
-                pixels=inpaint_pixel_fill)['samples']
+    inpaint_disable_initial_latent = True
+    if not inpaint_disable_initial_latent:
+        initial_latent = {'samples': latent_fill}
 
-        progressbar(async_task, 13, 'VAE encoding ...')
-        latent_fill = core.encode_vae(
-            vae=candidate_vae,
-            pixels=inpaint_pixel_fill)['samples']
+    B, C, H, W = latent_fill.shape
+    height, width = H * 8, W * 8
+    final_height, final_width = inpaint_worker.current_task.image.shape[:2]
+    print(f'Final resolution is {str((final_height, final_width))}, latent is {str((height, width))}.')
 
-        inpaint_worker.current_task.load_latent(
-            latent_fill=latent_fill, latent_mask=latent_mask, latent_swap=latent_swap)
 
-        if inpaint_parameterized:
-            pipeline.final_unet = inpaint_worker.current_task.patch(
-                inpaint_head_model_path=inpaint_head_model_path,
-                inpaint_latent=latent_inpaint,
-                inpaint_latent_mask=latent_mask,
-                model=pipeline.final_unet
-            )
-
-        if not inpaint_disable_initial_latent:
-            initial_latent = {'samples': latent_fill}
-
-        B, C, H, W = latent_fill.shape
-        height, width = H * 8, W * 8
-        final_height, final_width = inpaint_worker.current_task.image.shape[:2]
-        print(f'Final resolution is {str((final_height, final_width))}, latent is {str((height, width))}.')
 
 
 def generate_image():
+    all_steps = steps * image_number
+    print(f'[Parameters] Denoising Strength = {denoising_strength}')
+    
+    log_shape = f'Image Space {(height, width)}'
+
+    print(f'[Parameters] Initial Latent shape: {log_shape}')
+
+    preparation_time = time.perf_counter() - execution_start_time
+    print(f'Preparation time: {preparation_time:.2f} seconds')
+
+    final_sampler_name = sampler_name
+    final_scheduler_name = scheduler_name
+
+    async_task.yields.append(['preview', (13, 'Moving model to GPU ...', None)])
+
     imgs = pipeline.process_diffusion(
         positive_cond=positive_cond,
         negative_cond=negative_cond,
