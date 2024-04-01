@@ -12,7 +12,6 @@ import ldm_patched.modules.model_management as model_management
 
 from transformers.generation.logits_process import LogitsProcessorList
 from transformers import AutoTokenizer, AutoModelForCausalLM, set_seed
-from modules.config import path_fooocus_expansion
 from ldm_patched.modules.model_patcher import ModelPatcher
 
 
@@ -36,6 +35,7 @@ def remove_pattern(x, pattern):
 
 class FooocusExpansion:
     def __init__(self):
+        path_fooocus_expansion = "./fooocus_expansion"
         self.tokenizer = AutoTokenizer.from_pretrained(path_fooocus_expansion)
 
         positive_words = open(os.path.join(path_fooocus_expansion, 'positive.txt'),

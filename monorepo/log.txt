@@ -1,0 +1,183 @@
+Refiner disabled because base model and refiner are same.
+[Parameters] Adaptive CFG = 7
+[Parameters] Sharpness = 10
+[Parameters] ControlNet Softness = 0.25
+[Parameters] ADM Scale = 1.5 : 0.8 : 0.3
+[Parameters] CFG = 4.0
+[Parameters] Seed = 3904007106701520875
+[Fooocus] Downloading upscale models ...
+Downloading: "https://huggingface.co/lllyasviel/misc/resolve/main/fooocus_upscaler_s409985e5.bin" to /content/Fooocus/models/upscale_models/fooocus_upscaler_s409985e5.bin
+
+100% 32.1M/32.1M [00:00<00:00, 314MB/s]
+[Fooocus] Downloading inpainter ...
+Downloading: "https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/fooocus_inpaint_head.pth" to /content/Fooocus/models/inpaint/fooocus_inpaint_head.pth
+
+100% 51.4k/51.4k [00:00<00:00, 12.4MB/s]
+Downloading: "https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/inpaint_v26.fooocus.patch" to /content/Fooocus/models/inpaint/inpaint_v26.fooocus.patch
+
+100% 1.23G/1.23G [00:09<00:00, 133MB/s]
+[Inpaint] Current inpaint model is /content/Fooocus/models/inpaint/inpaint_v26.fooocus.patch
+[Parameters] Sampler = dpmpp_2m_sde_gpu - karras
+[Parameters] Steps = 30 - 24
+[Fooocus] Initializing ...
+[Fooocus] Loading models ...
+Synthetic Refiner Activated
+Synthetic Refiner Activated
+Request to load LoRAs [['None', 0.1], ['None', 1.0], ['None', 1.0], ['None', 1.0], ['None', 1.0], ('/content/Fooocus/models/inpaint/inpaint_v26.fooocus.patch', 1.0)] for model [/content/Fooocus/models/checkpoints/sd_xl_turbo_1.0_fp16.safetensors].
+Loaded LoRA [/content/Fooocus/models/inpaint/inpaint_v26.fooocus.patch] for UNet [/content/Fooocus/models/checkpoints/sd_xl_turbo_1.0_fp16.safetensors] with 960 keys at weight 1.0.
+Request to load LoRAs [['None', 0.1], ['None', 1.0], ['None', 1.0], ['None', 1.0], ['None', 1.0]] for model [/content/Fooocus/models/checkpoints/sd_xl_turbo_1.0_fp16.safetensors].
+Requested to load SDXLClipModel
+Loading 1 new model
+unload clone 1
+[Fooocus Model Management] Moving model(s) has taken 1.80 seconds
+[Fooocus] Processing prompts ...
+[Fooocus] Preparing Fooocus text #1 ...
+[Prompt Expansion] barn, bright light, water on floor, intricate, elegant, sharp focus, highly detailed, dramatic, cinematic, new dynamic composition, perfect professional color, stylish, attractive, creative, beautiful, best, gorgeous, relaxed, loving, pretty, friendly, charming, cute, enchanted, epic, stunning, enhanced, glowing, colorful, illuminated, determined, joyful, extremely
+[Fooocus] Preparing Fooocus text #2 ...
+[Prompt Expansion] barn, bright light, water on floor, transparent, detailed, color spread, cinematic, epic, calm, healing, crisp, extremely coherent, sharp, artistic, composition, beautiful, dramatic, intricate, elegant, highly detail, professional, ambient background, sunny, magic, surreal, vibrant, polished, complex, iconic, innocent, fine, sublime, illuminated, creative
+[Fooocus] Encoding positive #1 ...
+[Fooocus Model Management] Moving model(s) has taken 0.34 seconds
+[Fooocus] Encoding positive #2 ...
+[Fooocus] Encoding negative #1 ...
+[Fooocus] Encoding negative #2 ...
+[Fooocus] Image processing ...
+GOALS: ['inpaint']
+UOV method: disabled
+[Fooocus] VAE Inpaint encoding ...
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 1.18 seconds
+[Fooocus] VAE encoding ...
+Final resolution is (1024, 1024), latent is (1024, 1024).
+[Parameters] Denoising Strength = 1
+[Parameters] Initial Latent shape: Image Space (1024, 1024)
+Preparation time: 25.49 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.0291671771556139, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 3.80 seconds
+ 80% 24/30 [00:20<00:05,  1.20it/s]Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+100% 30/30 [00:25<00:00,  1.18it/s]
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 0.19 seconds
+Image generated with private log at: /content/Fooocus/outputs/2024-03-31/log.html
+Generating and saving time: 32.07 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.0291671771556139, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 2.43 seconds
+ 80% 24/30 [00:20<00:05,  1.16it/s]Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+100% 30/30 [00:25<00:00,  1.16it/s]
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 0.20 seconds
+Image generated with private log at: /content/Fooocus/outputs/2024-03-31/log.html
+Generating and saving time: 31.00 seconds
+Requested to load SDXLClipModel
+Requested to load GPT2LMHeadModel
+Loading 2 new models
+Total time: 88.60 seconds
+[Fooocus Model Management] Moving model(s) has taken 0.80 seconds
+Refiner disabled because base model and refiner are same.
+[Parameters] Adaptive CFG = 7
+[Parameters] Sharpness = 10
+[Parameters] ControlNet Softness = 0.25
+[Parameters] ADM Scale = 1.5 : 0.8 : 0.3
+[Parameters] CFG = 4.0
+[Parameters] Seed = 858969976552157018
+[Fooocus] Downloading upscale models ...
+[Fooocus] Downloading inpainter ...
+[Inpaint] Current inpaint model is /content/Fooocus/models/inpaint/inpaint_v26.fooocus.patch
+[Parameters] Sampler = dpmpp_2m_sde_gpu - karras
+[Parameters] Steps = 30 - 24
+[Fooocus] Initializing ...
+[Fooocus] Loading models ...
+Synthetic Refiner Activated
+Synthetic Refiner Activated
+Request to load LoRAs [['None', 0.1], ['None', 1.0], ['None', 1.0], ['None', 1.0], ['None', 1.0]] for model [/content/Fooocus/models/checkpoints/sd_xl_turbo_1.0_fp16.safetensors].
+[Fooocus] Processing prompts ...
+[Fooocus] Preparing Fooocus text #1 ...
+[Prompt Expansion] sky, clouds, flying, sunny, beautiful, magnificent, cinematic, artistic, dramatic ambient, professional, highly detailed, colorful, focus, cool, great composition, creative, atmosphere, lively, fantastic, full color, perfect, epic, awesome, gorgeous, intricate, amazing detail, bright colors, winning, fabulous, elegant, flawless, vibrant, brilliant, focused, very
+[Fooocus] Preparing Fooocus text #2 ...
+[Prompt Expansion] sky, clouds, flying, sunny, beautiful, stunning, highly detailed, pretty, perfect, intricate, elegant, breathtaking, light, vivid colors, very inspirational, wonderful, delicate, colorful, epic, coherent, color, ambient, brilliant, illuminated, rich deep complex artistic, cinematic, extremely lovely, symmetry, great composition, fine detail, clear, aesthetic, amazing
+[Fooocus] Preparing Fooocus text #3 ...
+[Prompt Expansion] sky, clouds, flying, sunny, bright, color, intricate, epic, cinematic, directed, highly detailed, extremely polished, artistic, great composition, symmetry, clear, crisp, sharp focus, beautiful, inspired, deep light, amazing, creative, shiny, vibrant, lucid, flowing, complex, glowing, colors, surreal, thought, magnificent, awesome, perfect
+[Fooocus] Encoding positive #1 ...
+[Fooocus Model Management] Moving model(s) has taken 0.13 seconds
+[Fooocus] Encoding positive #2 ...
+[Fooocus] Encoding positive #3 ...
+[Fooocus] Encoding negative #1 ...
+[Fooocus] Encoding negative #2 ...
+[Fooocus] Encoding negative #3 ...
+[Fooocus] Image processing ...
+GOALS: ['inpaint']
+UOV method: disabled
+Upscaling image with shape (533, 800, 3) ...
+[Fooocus] VAE Inpaint encoding ...
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 1.04 seconds
+[Fooocus] VAE encoding ...
+Final resolution is (533, 800), latent is (768, 1216).
+[Parameters] Denoising Strength = 1
+[Parameters] Initial Latent shape: Image Space (768, 1216)
+Preparation time: 14.22 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.0291671771556139, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 2.46 seconds
+ 80% 24/30 [00:18<00:04,  1.28it/s]Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+100% 30/30 [00:23<00:00,  1.28it/s]
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 0.19 seconds
+Image generated with private log at: /content/Fooocus/outputs/2024-03-31/log.html
+Generating and saving time: 28.26 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.0291671771556139, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 2.78 seconds
+ 80% 24/30 [00:19<00:04,  1.23it/s]Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+100% 30/30 [00:24<00:00,  1.23it/s]
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 0.22 seconds
+Image generated with private log at: /content/Fooocus/outputs/2024-03-31/log.html
+Generating and saving time: 29.53 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.0291671771556139, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 2.62 seconds
+ 80% 24/30 [00:19<00:04,  1.25it/s]Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+100% 30/30 [00:24<00:00,  1.23it/s]
+Requested to load AutoencoderKL
+Loading 1 new model
+[Fooocus Model Management] Moving model(s) has taken 0.19 seconds
+Image generated with private log at: /content/Fooocus/outputs/2024-03-31/log.html
+Generating and saving time: 29.30 seconds
+Requested to load SDXLClipModel
+Requested to load GPT2LMHeadModel
+Loading 2 new models
+Total time: 101.35 seconds
+[Fooocus Model Management] Moving model(s) has taken 0.82 seconds

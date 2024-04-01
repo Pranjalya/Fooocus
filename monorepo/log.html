@@ -1,0 +1,126 @@
+<!DOCTYPE html><html><head><title>Fooocus Log 2024-03-31</title><style>body { background-color: #121212; color: #E0E0E0; } a { color: #BB86FC; } .metadata { border-collapse: collapse; width: 100%; } .metadata .label { width: 15%; } .metadata .value { width: 85%; font-weight: bold; } .metadata th, .metadata td { border: 1px solid #4d4d4d; padding: 4px; } .image-container img { height: auto; max-width: 512px; display: block; padding-right:10px; } .image-container div { text-align: center; padding: 4px; } hr { border-color: gray; } button { background-color: black; color: white; border: 1px solid grey; border-radius: 5px; padding: 5px 10px; text-align: center; display: inline-block; font-size: 16px; cursor: pointer; }button:hover {background-color: grey; color: black;}</style></head><body><script>
+        function to_clipboard(txt) { 
+        txt = decodeURIComponent(txt);
+        if (navigator.clipboard && navigator.permissions) {
+            navigator.clipboard.writeText(txt)
+        } else {
+            const textArea = document.createElement('textArea')
+            textArea.value = txt
+            textArea.style.width = 0
+            textArea.style.position = 'fixed'
+            textArea.style.left = '-999px'
+            textArea.style.top = '10px'
+            textArea.setAttribute('readonly', 'readonly')
+            document.body.appendChild(textArea)
+
+            textArea.select()
+            document.execCommand('copy')
+            document.body.removeChild(textArea)
+        }
+        alert('Copied to Clipboard!\nPaste to prompt area to load parameters.\nCurrent clipboard content is:\n\n' + txt);
+        }
+        </script><p>Fooocus Log 2024-03-31 (private)</p>
+<p>Metadata is embedded if enabled in the config or developer debug mode. You can find the information for each image in line Metadata Scheme.</p><!--fooocus-log-split-->
+
+<div id="2024-03-31_09-47-27_1561_png" class="image-container"><hr><table><tr>
+<td><a href="2024-03-31_09-47-27_1561.png" target="_blank"><img src='2024-03-31_09-47-27_1561.png' onerror="this.closest('.image-container').style.display='none';" loading='lazy'/></a><div>2024-03-31_09-47-27_1561.png</div></td><td><table class='metadata'><tr><td class='label'>Prompt</td><td class='value'>sky, clouds, flying, sunny</td></tr>
+<tr><td class='label'>Negative Prompt</td><td class='value'></td></tr>
+<tr><td class='label'>Fooocus V2 Expansion</td><td class='value'>sky, clouds, flying, sunny, bright, color, intricate, epic, cinematic, directed, highly detailed, extremely polished, artistic, great composition, symmetry, clear, crisp, sharp focus, beautiful, inspired, deep light, amazing, creative, shiny, vibrant, lucid, flowing, complex, glowing, colors, surreal, thought, magnificent, awesome, perfect</td></tr>
+<tr><td class='label'>Styles</td><td class='value'>['Fooocus V2', 'Fooocus Enhance', 'Fooocus Sharp']</td></tr>
+<tr><td class='label'>Performance</td><td class='value'>Speed</td></tr>
+<tr><td class='label'>Resolution</td><td class='value'>(1216, 768)</td></tr>
+<tr><td class='label'>Guidance Scale</td><td class='value'>4</td></tr>
+<tr><td class='label'>Sharpness</td><td class='value'>10</td></tr>
+<tr><td class='label'>ADM Guidance</td><td class='value'>(1.5, 0.8, 0.3)</td></tr>
+<tr><td class='label'>Base Model</td><td class='value'>sd_xl_turbo_1.0_fp16.safetensors</td></tr>
+<tr><td class='label'>Refiner Model</td><td class='value'>None</td></tr>
+<tr><td class='label'>Refiner Switch</td><td class='value'>0.8</td></tr>
+<tr><td class='label'>Sampler</td><td class='value'>dpmpp_2m_sde_gpu</td></tr>
+<tr><td class='label'>Scheduler</td><td class='value'>karras</td></tr>
+<tr><td class='label'>Seed</td><td class='value'>858969976552157020</td></tr>
+<tr><td class='label'>Metadata Scheme</td><td class='value'>False</td></tr>
+<tr><td class='label'>Version</td><td class='value'>Fooocus v2.3.1</td></tr>
+</table></br><button onclick="to_clipboard('%7B%0A%22prompt%22%3A%20%22sky%2C%20clouds%2C%20flying%2C%20sunny%22%2C%0A%22negative_prompt%22%3A%20%22%22%2C%0A%22prompt_expansion%22%3A%20%22sky%2C%20clouds%2C%20flying%2C%20sunny%2C%20bright%2C%20color%2C%20intricate%2C%20epic%2C%20cinematic%2C%20directed%2C%20highly%20detailed%2C%20extremely%20polished%2C%20artistic%2C%20great%20composition%2C%20symmetry%2C%20clear%2C%20crisp%2C%20sharp%20focus%2C%20beautiful%2C%20inspired%2C%20deep%20light%2C%20amazing%2C%20creative%2C%20shiny%2C%20vibrant%2C%20lucid%2C%20flowing%2C%20complex%2C%20glowing%2C%20colors%2C%20surreal%2C%20thought%2C%20magnificent%2C%20awesome%2C%20perfect%22%2C%0A%22styles%22%3A%20%22%5B%27Fooocus%20V2%27%2C%20%27Fooocus%20Enhance%27%2C%20%27Fooocus%20Sharp%27%5D%22%2C%0A%22performance%22%3A%20%22Speed%22%2C%0A%22resolution%22%3A%20%22%281216%2C%20768%29%22%2C%0A%22guidance_scale%22%3A%204%2C%0A%22sharpness%22%3A%2010%2C%0A%22adm_guidance%22%3A%20%22%281.5%2C%200.8%2C%200.3%29%22%2C%0A%22base_model%22%3A%20%22sd_xl_turbo_1.0_fp16.safetensors%22%2C%0A%22refiner_model%22%3A%20%22None%22%2C%0A%22refiner_switch%22%3A%200.8%2C%0A%22sampler%22%3A%20%22dpmpp_2m_sde_gpu%22%2C%0A%22scheduler%22%3A%20%22karras%22%2C%0A%22seed%22%3A%20%22858969976552157020%22%2C%0A%22metadata_scheme%22%3A%20false%2C%0A%22version%22%3A%20%22Fooocus%20v2.3.1%22%0A%7D')">Copy to Clipboard</button></td></tr></table></div>
+
+<div id="2024-03-31_09-46-57_5475_png" class="image-container"><hr><table><tr>
+<td><a href="2024-03-31_09-46-57_5475.png" target="_blank"><img src='2024-03-31_09-46-57_5475.png' onerror="this.closest('.image-container').style.display='none';" loading='lazy'/></a><div>2024-03-31_09-46-57_5475.png</div></td><td><table class='metadata'><tr><td class='label'>Prompt</td><td class='value'>sky, clouds, flying, sunny</td></tr>
+<tr><td class='label'>Negative Prompt</td><td class='value'></td></tr>
+<tr><td class='label'>Fooocus V2 Expansion</td><td class='value'>sky, clouds, flying, sunny, beautiful, stunning, highly detailed, pretty, perfect, intricate, elegant, breathtaking, light, vivid colors, very inspirational, wonderful, delicate, colorful, epic, coherent, color, ambient, brilliant, illuminated, rich deep complex artistic, cinematic, extremely lovely, symmetry, great composition, fine detail, clear, aesthetic, amazing</td></tr>
+<tr><td class='label'>Styles</td><td class='value'>['Fooocus V2', 'Fooocus Enhance', 'Fooocus Sharp']</td></tr>
+<tr><td class='label'>Performance</td><td class='value'>Speed</td></tr>
+<tr><td class='label'>Resolution</td><td class='value'>(1216, 768)</td></tr>
+<tr><td class='label'>Guidance Scale</td><td class='value'>4</td></tr>
+<tr><td class='label'>Sharpness</td><td class='value'>10</td></tr>
+<tr><td class='label'>ADM Guidance</td><td class='value'>(1.5, 0.8, 0.3)</td></tr>
+<tr><td class='label'>Base Model</td><td class='value'>sd_xl_turbo_1.0_fp16.safetensors</td></tr>
+<tr><td class='label'>Refiner Model</td><td class='value'>None</td></tr>
+<tr><td class='label'>Refiner Switch</td><td class='value'>0.8</td></tr>
+<tr><td class='label'>Sampler</td><td class='value'>dpmpp_2m_sde_gpu</td></tr>
+<tr><td class='label'>Scheduler</td><td class='value'>karras</td></tr>
+<tr><td class='label'>Seed</td><td class='value'>858969976552157019</td></tr>
+<tr><td class='label'>Metadata Scheme</td><td class='value'>False</td></tr>
+<tr><td class='label'>Version</td><td class='value'>Fooocus v2.3.1</td></tr>
+</table></br><button onclick="to_clipboard('%7B%0A%22prompt%22%3A%20%22sky%2C%20clouds%2C%20flying%2C%20sunny%22%2C%0A%22negative_prompt%22%3A%20%22%22%2C%0A%22prompt_expansion%22%3A%20%22sky%2C%20clouds%2C%20flying%2C%20sunny%2C%20beautiful%2C%20stunning%2C%20highly%20detailed%2C%20pretty%2C%20perfect%2C%20intricate%2C%20elegant%2C%20breathtaking%2C%20light%2C%20vivid%20colors%2C%20very%20inspirational%2C%20wonderful%2C%20delicate%2C%20colorful%2C%20epic%2C%20coherent%2C%20color%2C%20ambient%2C%20brilliant%2C%20illuminated%2C%20rich%20deep%20complex%20artistic%2C%20cinematic%2C%20extremely%20lovely%2C%20symmetry%2C%20great%20composition%2C%20fine%20detail%2C%20clear%2C%20aesthetic%2C%20amazing%22%2C%0A%22styles%22%3A%20%22%5B%27Fooocus%20V2%27%2C%20%27Fooocus%20Enhance%27%2C%20%27Fooocus%20Sharp%27%5D%22%2C%0A%22performance%22%3A%20%22Speed%22%2C%0A%22resolution%22%3A%20%22%281216%2C%20768%29%22%2C%0A%22guidance_scale%22%3A%204%2C%0A%22sharpness%22%3A%2010%2C%0A%22adm_guidance%22%3A%20%22%281.5%2C%200.8%2C%200.3%29%22%2C%0A%22base_model%22%3A%20%22sd_xl_turbo_1.0_fp16.safetensors%22%2C%0A%22refiner_model%22%3A%20%22None%22%2C%0A%22refiner_switch%22%3A%200.8%2C%0A%22sampler%22%3A%20%22dpmpp_2m_sde_gpu%22%2C%0A%22scheduler%22%3A%20%22karras%22%2C%0A%22seed%22%3A%20%22858969976552157019%22%2C%0A%22metadata_scheme%22%3A%20false%2C%0A%22version%22%3A%20%22Fooocus%20v2.3.1%22%0A%7D')">Copy to Clipboard</button></td></tr></table></div>
+
+<div id="2024-03-31_09-46-28_4632_png" class="image-container"><hr><table><tr>
+<td><a href="2024-03-31_09-46-28_4632.png" target="_blank"><img src='2024-03-31_09-46-28_4632.png' onerror="this.closest('.image-container').style.display='none';" loading='lazy'/></a><div>2024-03-31_09-46-28_4632.png</div></td><td><table class='metadata'><tr><td class='label'>Prompt</td><td class='value'>sky, clouds, flying, sunny</td></tr>
+<tr><td class='label'>Negative Prompt</td><td class='value'></td></tr>
+<tr><td class='label'>Fooocus V2 Expansion</td><td class='value'>sky, clouds, flying, sunny, beautiful, magnificent, cinematic, artistic, dramatic ambient, professional, highly detailed, colorful, focus, cool, great composition, creative, atmosphere, lively, fantastic, full color, perfect, epic, awesome, gorgeous, intricate, amazing detail, bright colors, winning, fabulous, elegant, flawless, vibrant, brilliant, focused, very</td></tr>
+<tr><td class='label'>Styles</td><td class='value'>['Fooocus V2', 'Fooocus Enhance', 'Fooocus Sharp']</td></tr>
+<tr><td class='label'>Performance</td><td class='value'>Speed</td></tr>
+<tr><td class='label'>Resolution</td><td class='value'>(1216, 768)</td></tr>
+<tr><td class='label'>Guidance Scale</td><td class='value'>4</td></tr>
+<tr><td class='label'>Sharpness</td><td class='value'>10</td></tr>
+<tr><td class='label'>ADM Guidance</td><td class='value'>(1.5, 0.8, 0.3)</td></tr>
+<tr><td class='label'>Base Model</td><td class='value'>sd_xl_turbo_1.0_fp16.safetensors</td></tr>
+<tr><td class='label'>Refiner Model</td><td class='value'>None</td></tr>
+<tr><td class='label'>Refiner Switch</td><td class='value'>0.8</td></tr>
+<tr><td class='label'>Sampler</td><td class='value'>dpmpp_2m_sde_gpu</td></tr>
+<tr><td class='label'>Scheduler</td><td class='value'>karras</td></tr>
+<tr><td class='label'>Seed</td><td class='value'>858969976552157018</td></tr>
+<tr><td class='label'>Metadata Scheme</td><td class='value'>False</td></tr>
+<tr><td class='label'>Version</td><td class='value'>Fooocus v2.3.1</td></tr>
+</table></br><button onclick="to_clipboard('%7B%0A%22prompt%22%3A%20%22sky%2C%20clouds%2C%20flying%2C%20sunny%22%2C%0A%22negative_prompt%22%3A%20%22%22%2C%0A%22prompt_expansion%22%3A%20%22sky%2C%20clouds%2C%20flying%2C%20sunny%2C%20beautiful%2C%20magnificent%2C%20cinematic%2C%20artistic%2C%20dramatic%20ambient%2C%20professional%2C%20highly%20detailed%2C%20colorful%2C%20focus%2C%20cool%2C%20great%20composition%2C%20creative%2C%20atmosphere%2C%20lively%2C%20fantastic%2C%20full%20color%2C%20perfect%2C%20epic%2C%20awesome%2C%20gorgeous%2C%20intricate%2C%20amazing%20detail%2C%20bright%20colors%2C%20winning%2C%20fabulous%2C%20elegant%2C%20flawless%2C%20vibrant%2C%20brilliant%2C%20focused%2C%20very%22%2C%0A%22styles%22%3A%20%22%5B%27Fooocus%20V2%27%2C%20%27Fooocus%20Enhance%27%2C%20%27Fooocus%20Sharp%27%5D%22%2C%0A%22performance%22%3A%20%22Speed%22%2C%0A%22resolution%22%3A%20%22%281216%2C%20768%29%22%2C%0A%22guidance_scale%22%3A%204%2C%0A%22sharpness%22%3A%2010%2C%0A%22adm_guidance%22%3A%20%22%281.5%2C%200.8%2C%200.3%29%22%2C%0A%22base_model%22%3A%20%22sd_xl_turbo_1.0_fp16.safetensors%22%2C%0A%22refiner_model%22%3A%20%22None%22%2C%0A%22refiner_switch%22%3A%200.8%2C%0A%22sampler%22%3A%20%22dpmpp_2m_sde_gpu%22%2C%0A%22scheduler%22%3A%20%22karras%22%2C%0A%22seed%22%3A%20%22858969976552157018%22%2C%0A%22metadata_scheme%22%3A%20false%2C%0A%22version%22%3A%20%22Fooocus%20v2.3.1%22%0A%7D')">Copy to Clipboard</button></td></tr></table></div>
+
+<div id="2024-03-31_09-44-20_8533_png" class="image-container"><hr><table><tr>
+<td><a href="2024-03-31_09-44-20_8533.png" target="_blank"><img src='2024-03-31_09-44-20_8533.png' onerror="this.closest('.image-container').style.display='none';" loading='lazy'/></a><div>2024-03-31_09-44-20_8533.png</div></td><td><table class='metadata'><tr><td class='label'>Prompt</td><td class='value'>barn, bright light, water on floor</td></tr>
+<tr><td class='label'>Negative Prompt</td><td class='value'></td></tr>
+<tr><td class='label'>Fooocus V2 Expansion</td><td class='value'>barn, bright light, water on floor, transparent, detailed, color spread, cinematic, epic, calm, healing, crisp, extremely coherent, sharp, artistic, composition, beautiful, dramatic, intricate, elegant, highly detail, professional, ambient background, sunny, magic, surreal, vibrant, polished, complex, iconic, innocent, fine, sublime, illuminated, creative</td></tr>
+<tr><td class='label'>Styles</td><td class='value'>['Fooocus V2', 'Fooocus Enhance', 'Fooocus Sharp']</td></tr>
+<tr><td class='label'>Performance</td><td class='value'>Speed</td></tr>
+<tr><td class='label'>Resolution</td><td class='value'>(1024, 1024)</td></tr>
+<tr><td class='label'>Guidance Scale</td><td class='value'>4</td></tr>
+<tr><td class='label'>Sharpness</td><td class='value'>10</td></tr>
+<tr><td class='label'>ADM Guidance</td><td class='value'>(1.5, 0.8, 0.3)</td></tr>
+<tr><td class='label'>Base Model</td><td class='value'>sd_xl_turbo_1.0_fp16.safetensors</td></tr>
+<tr><td class='label'>Refiner Model</td><td class='value'>None</td></tr>
+<tr><td class='label'>Refiner Switch</td><td class='value'>0.8</td></tr>
+<tr><td class='label'>Sampler</td><td class='value'>dpmpp_2m_sde_gpu</td></tr>
+<tr><td class='label'>Scheduler</td><td class='value'>karras</td></tr>
+<tr><td class='label'>Seed</td><td class='value'>3904007106701520876</td></tr>
+<tr><td class='label'>Metadata Scheme</td><td class='value'>False</td></tr>
+<tr><td class='label'>Version</td><td class='value'>Fooocus v2.3.1</td></tr>
+</table></br><button onclick="to_clipboard('%7B%0A%22prompt%22%3A%20%22barn%2C%20bright%20light%2C%20water%20on%20floor%22%2C%0A%22negative_prompt%22%3A%20%22%22%2C%0A%22prompt_expansion%22%3A%20%22barn%2C%20bright%20light%2C%20water%20on%20floor%2C%20transparent%2C%20detailed%2C%20color%20spread%2C%20cinematic%2C%20epic%2C%20calm%2C%20healing%2C%20crisp%2C%20extremely%20coherent%2C%20sharp%2C%20artistic%2C%20composition%2C%20beautiful%2C%20dramatic%2C%20intricate%2C%20elegant%2C%20highly%20detail%2C%20professional%2C%20ambient%20background%2C%20sunny%2C%20magic%2C%20surreal%2C%20vibrant%2C%20polished%2C%20complex%2C%20iconic%2C%20innocent%2C%20fine%2C%20sublime%2C%20illuminated%2C%20creative%22%2C%0A%22styles%22%3A%20%22%5B%27Fooocus%20V2%27%2C%20%27Fooocus%20Enhance%27%2C%20%27Fooocus%20Sharp%27%5D%22%2C%0A%22performance%22%3A%20%22Speed%22%2C%0A%22resolution%22%3A%20%22%281024%2C%201024%29%22%2C%0A%22guidance_scale%22%3A%204%2C%0A%22sharpness%22%3A%2010%2C%0A%22adm_guidance%22%3A%20%22%281.5%2C%200.8%2C%200.3%29%22%2C%0A%22base_model%22%3A%20%22sd_xl_turbo_1.0_fp16.safetensors%22%2C%0A%22refiner_model%22%3A%20%22None%22%2C%0A%22refiner_switch%22%3A%200.8%2C%0A%22sampler%22%3A%20%22dpmpp_2m_sde_gpu%22%2C%0A%22scheduler%22%3A%20%22karras%22%2C%0A%22seed%22%3A%20%223904007106701520876%22%2C%0A%22metadata_scheme%22%3A%20false%2C%0A%22version%22%3A%20%22Fooocus%20v2.3.1%22%0A%7D')">Copy to Clipboard</button></td></tr></table></div>
+
+<div id="2024-03-31_09-43-49_2017_png" class="image-container"><hr><table><tr>
+<td><a href="2024-03-31_09-43-49_2017.png" target="_blank"><img src='2024-03-31_09-43-49_2017.png' onerror="this.closest('.image-container').style.display='none';" loading='lazy'/></a><div>2024-03-31_09-43-49_2017.png</div></td><td><table class='metadata'><tr><td class='label'>Prompt</td><td class='value'>barn, bright light, water on floor</td></tr>
+<tr><td class='label'>Negative Prompt</td><td class='value'></td></tr>
+<tr><td class='label'>Fooocus V2 Expansion</td><td class='value'>barn, bright light, water on floor, intricate, elegant, sharp focus, highly detailed, dramatic, cinematic, new dynamic composition, perfect professional color, stylish, attractive, creative, beautiful, best, gorgeous, relaxed, loving, pretty, friendly, charming, cute, enchanted, epic, stunning, enhanced, glowing, colorful, illuminated, determined, joyful, extremely</td></tr>
+<tr><td class='label'>Styles</td><td class='value'>['Fooocus V2', 'Fooocus Enhance', 'Fooocus Sharp']</td></tr>
+<tr><td class='label'>Performance</td><td class='value'>Speed</td></tr>
+<tr><td class='label'>Resolution</td><td class='value'>(1024, 1024)</td></tr>
+<tr><td class='label'>Guidance Scale</td><td class='value'>4</td></tr>
+<tr><td class='label'>Sharpness</td><td class='value'>10</td></tr>
+<tr><td class='label'>ADM Guidance</td><td class='value'>(1.5, 0.8, 0.3)</td></tr>
+<tr><td class='label'>Base Model</td><td class='value'>sd_xl_turbo_1.0_fp16.safetensors</td></tr>
+<tr><td class='label'>Refiner Model</td><td class='value'>None</td></tr>
+<tr><td class='label'>Refiner Switch</td><td class='value'>0.8</td></tr>
+<tr><td class='label'>Sampler</td><td class='value'>dpmpp_2m_sde_gpu</td></tr>
+<tr><td class='label'>Scheduler</td><td class='value'>karras</td></tr>
+<tr><td class='label'>Seed</td><td class='value'>3904007106701520875</td></tr>
+<tr><td class='label'>Metadata Scheme</td><td class='value'>False</td></tr>
+<tr><td class='label'>Version</td><td class='value'>Fooocus v2.3.1</td></tr>
+</table></br><button onclick="to_clipboard('%7B%0A%22prompt%22%3A%20%22barn%2C%20bright%20light%2C%20water%20on%20floor%22%2C%0A%22negative_prompt%22%3A%20%22%22%2C%0A%22prompt_expansion%22%3A%20%22barn%2C%20bright%20light%2C%20water%20on%20floor%2C%20intricate%2C%20elegant%2C%20sharp%20focus%2C%20highly%20detailed%2C%20dramatic%2C%20cinematic%2C%20new%20dynamic%20composition%2C%20perfect%20professional%20color%2C%20stylish%2C%20attractive%2C%20creative%2C%20beautiful%2C%20best%2C%20gorgeous%2C%20relaxed%2C%20loving%2C%20pretty%2C%20friendly%2C%20charming%2C%20cute%2C%20enchanted%2C%20epic%2C%20stunning%2C%20enhanced%2C%20glowing%2C%20colorful%2C%20illuminated%2C%20determined%2C%20joyful%2C%20extremely%22%2C%0A%22styles%22%3A%20%22%5B%27Fooocus%20V2%27%2C%20%27Fooocus%20Enhance%27%2C%20%27Fooocus%20Sharp%27%5D%22%2C%0A%22performance%22%3A%20%22Speed%22%2C%0A%22resolution%22%3A%20%22%281024%2C%201024%29%22%2C%0A%22guidance_scale%22%3A%204%2C%0A%22sharpness%22%3A%2010%2C%0A%22adm_guidance%22%3A%20%22%281.5%2C%200.8%2C%200.3%29%22%2C%0A%22base_model%22%3A%20%22sd_xl_turbo_1.0_fp16.safetensors%22%2C%0A%22refiner_model%22%3A%20%22None%22%2C%0A%22refiner_switch%22%3A%200.8%2C%0A%22sampler%22%3A%20%22dpmpp_2m_sde_gpu%22%2C%0A%22scheduler%22%3A%20%22karras%22%2C%0A%22seed%22%3A%20%223904007106701520875%22%2C%0A%22metadata_scheme%22%3A%20false%2C%0A%22version%22%3A%20%22Fooocus%20v2.3.1%22%0A%7D')">Copy to Clipboard</button></td></tr></table></div>
+
+
+<!--fooocus-log-split--></body></html>

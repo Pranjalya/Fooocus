@@ -1,289 +1,461 @@
-def downloading_inpaint_models():
-    load_file_from_url(
-            url='https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/fooocus_inpaint_head.pth',
-            model_dir=path_inpaint,
-            file_name='fooocus_inpaint_head.pth'
-        )
-    head_file = os.path.join(path_inpaint, 'fooocus_inpaint_head.pth')
-    patch_file = None
+import torch
+import math
+import struct
+# import ldm_patched.modules.checkpoint_pickle
+import safetensors.torch
+import numpy as np
+from PIL import Image
 
-    load_file_from_url(
-                url='https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/inpaint_v26.fooocus.patch',
-                model_dir=path_inpaint,
-                file_name='inpaint_v26.fooocus.patch'
-            )
-    patch_file = os.path.join(path_inpaint, 'inpaint_v26.fooocus.patch')
+def load_torch_file(ckpt, safe_load=False, device=None):
+    if device is None:
+        device = torch.device("cpu")
+    if ckpt.lower().endswith(".safetensors"):
+        sd = safetensors.torch.load_file(ckpt, device=device.type)
+    else:
+        if safe_load:
+            if not 'weights_only' in torch.load.__code__.co_varnames:
+                print("Warning torch.load doesn't support weights_only on this pytorch version, loading unsafely.")
+                safe_load = False
+        if safe_load:
+            pl_sd = torch.load(ckpt, map_location=device, weights_only=True)
+        # else:
+        #     pl_sd = torch.load(ckpt, map_location=device, pickle_module=ldm_patched.modules.checkpoint_pickle)
+        if "global_step" in pl_sd:
+            print(f"Global Step: {pl_sd['global_step']}")
+        if "state_dict" in pl_sd:
+            sd = pl_sd["state_dict"]
+        else:
+            sd = pl_sd
+    return sd
+
+def save_torch_file(sd, ckpt, metadata=None):
+    if metadata is not None:
+        safetensors.torch.save_file(sd, ckpt, metadata=metadata)
+    else:
+        safetensors.torch.save_file(sd, ckpt)
+
+def calculate_parameters(sd, prefix=""):
+    params = 0
+    for k in sd.keys():
+        if k.startswith(prefix):
+            params += sd[k].nelement()
+    return params
+
+def state_dict_key_replace(state_dict, keys_to_replace):
+    for x in keys_to_replace:
+        if x in state_dict:
+            state_dict[keys_to_replace[x]] = state_dict.pop(x)
+    return state_dict
+
+def state_dict_prefix_replace(state_dict, replace_prefix, filter_keys=False):
+    if filter_keys:
+        out = {}
+    else:
+        out = state_dict
+    for rp in replace_prefix:
+        replace = list(map(lambda a: (a, "{}{}".format(replace_prefix[rp], a[len(rp):])), filter(lambda a: a.startswith(rp), state_dict.keys())))
+        for x in replace:
+            w = state_dict.pop(x[0])
+            out[x[1]] = w
+    return out
 
 
-def download_models():
-    load_file_from_url(
-        url='https://huggingface.co/lllyasviel/misc/resolve/main/fooocus_expansion.bin',
-        model_dir=config.path_fooocus_expansion,
-        file_name='pytorch_model.bin'
-    )
-    load_file_from_url(
-        url='https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sd_xl_turbo_1.0_fp16.safetensors',
-        model_dir=config.path_fooocus_expansion,
-        file_name='sd_xl_turbo_1.0_fp16.safetensors'
-    )
+def transformers_convert(sd, prefix_from, prefix_to, number):
+    keys_to_replace = {
+        "{}positional_embedding": "{}embeddings.position_embedding.weight",
+        "{}token_embedding.weight": "{}embeddings.token_embedding.weight",
+        "{}ln_final.weight": "{}final_layer_norm.weight",
+        "{}ln_final.bias": "{}final_layer_norm.bias",
+    }
 
+    for k in keys_to_replace:
+        x = k.format(prefix_from)
+        if x in sd:
+            sd[keys_to_replace[k].format(prefix_to)] = sd.pop(x)
 
-def load_inpaint_images():
-    inpaint_image = inpaint_input_image['image']
-    inpaint_mask = inpaint_input_image['mask'][:, :, 0]
+    resblock_to_replace = {
+        "ln_1": "layer_norm1",
+        "ln_2": "layer_norm2",
+        "mlp.c_fc": "mlp.fc1",
+        "mlp.c_proj": "mlp.fc2",
+        "attn.out_proj": "self_attn.out_proj",
+    }
 
-    if inpaint_mask_upload_checkbox:
-        if isinstance(inpaint_mask_image_upload, np.ndarray):
-            if inpaint_mask_image_upload.ndim == 3:
-                H, W, C = inpaint_image.shape
-                inpaint_mask_image_upload = resample_image(inpaint_mask_image_upload, width=W, height=H)
-                inpaint_mask_image_upload = np.mean(inpaint_mask_image_upload, axis=2)
-                inpaint_mask_image_upload = (inpaint_mask_image_upload > 127).astype(np.uint8) * 255
-                inpaint_mask = np.maximum(inpaint_mask, inpaint_mask_image_upload)
+    for resblock in range(number):
+        for x in resblock_to_replace:
+            for y in ["weight", "bias"]:
+                k = "{}transformer.resblocks.{}.{}.{}".format(prefix_from, resblock, x, y)
+                k_to = "{}encoder.layers.{}.{}.{}".format(prefix_to, resblock, resblock_to_replace[x], y)
+                if k in sd:
+                    sd[k_to] = sd.pop(k)
 
-    if int(inpaint_erode_or_dilate) != 0:
-        inpaint_mask = erode_or_dilate(inpaint_mask, inpaint_erode_or_dilate)
+        for y in ["weight", "bias"]:
+            k_from = "{}transformer.resblocks.{}.attn.in_proj_{}".format(prefix_from, resblock, y)
+            if k_from in sd:
+                weights = sd.pop(k_from)
+                shape_from = weights.shape[0] // 3
+                for x in range(3):
+                    p = ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"]
+                    k_to = "{}encoder.layers.{}.{}.{}".format(prefix_to, resblock, p[x], y)
+                    sd[k_to] = weights[shape_from*x:shape_from*(x + 1)]
+    return sd
 
-    inpaint_image = HWC3(inpaint_image)
+UNET_MAP_ATTENTIONS = {
+    "proj_in.weight",
+    "proj_in.bias",
+    "proj_out.weight",
+    "proj_out.bias",
+    "norm.weight",
+    "norm.bias",
+}
 
+TRANSFORMER_BLOCKS = {
+    "norm1.weight",
+    "norm1.bias",
+    "norm2.weight",
+    "norm2.bias",
+    "norm3.weight",
+    "norm3.bias",
+    "attn1.to_q.weight",
+    "attn1.to_k.weight",
+    "attn1.to_v.weight",
+    "attn1.to_out.0.weight",
+    "attn1.to_out.0.bias",
+    "attn2.to_q.weight",
+    "attn2.to_k.weight",
+    "attn2.to_v.weight",
+    "attn2.to_out.0.weight",
+    "attn2.to_out.0.bias",
+    "ff.net.0.proj.weight",
+    "ff.net.0.proj.bias",
+    "ff.net.2.weight",
+    "ff.net.2.bias",
+}
 
-def expand_prompt():
-    progressbar(async_task, 3, 'Processing prompts ...')
-    tasks = []
+UNET_MAP_RESNET = {
+    "in_layers.2.weight": "conv1.weight",
+    "in_layers.2.bias": "conv1.bias",
+    "emb_layers.1.weight": "time_emb_proj.weight",
+    "emb_layers.1.bias": "time_emb_proj.bias",
+    "out_layers.3.weight": "conv2.weight",
+    "out_layers.3.bias": "conv2.bias",
+    "skip_connection.weight": "conv_shortcut.weight",
+    "skip_connection.bias": "conv_shortcut.bias",
+    "in_layers.0.weight": "norm1.weight",
+    "in_layers.0.bias": "norm1.bias",
+    "out_layers.0.weight": "norm2.weight",
+    "out_layers.0.bias": "norm2.bias",
+}
+
+UNET_MAP_BASIC = {
+    ("label_emb.0.0.weight", "class_embedding.linear_1.weight"),
+    ("label_emb.0.0.bias", "class_embedding.linear_1.bias"),
+    ("label_emb.0.2.weight", "class_embedding.linear_2.weight"),
+    ("label_emb.0.2.bias", "class_embedding.linear_2.bias"),
+    ("label_emb.0.0.weight", "add_embedding.linear_1.weight"),
+    ("label_emb.0.0.bias", "add_embedding.linear_1.bias"),
+    ("label_emb.0.2.weight", "add_embedding.linear_2.weight"),
+    ("label_emb.0.2.bias", "add_embedding.linear_2.bias"),
+    ("input_blocks.0.0.weight", "conv_in.weight"),
+    ("input_blocks.0.0.bias", "conv_in.bias"),
+    ("out.0.weight", "conv_norm_out.weight"),
+    ("out.0.bias", "conv_norm_out.bias"),
+    ("out.2.weight", "conv_out.weight"),
+    ("out.2.bias", "conv_out.bias"),
+    ("time_embed.0.weight", "time_embedding.linear_1.weight"),
+    ("time_embed.0.bias", "time_embedding.linear_1.bias"),
+    ("time_embed.2.weight", "time_embedding.linear_2.weight"),
+    ("time_embed.2.bias", "time_embedding.linear_2.bias")
+}
+
+def unet_to_diffusers(unet_config):
+    num_res_blocks = unet_config["num_res_blocks"]
+    channel_mult = unet_config["channel_mult"]
+    transformer_depth = unet_config["transformer_depth"][:]
+    transformer_depth_output = unet_config["transformer_depth_output"][:]
+    num_blocks = len(channel_mult)
+
+    transformers_mid = unet_config.get("transformer_depth_middle", None)
+
+    diffusers_unet_map = {}
+    for x in range(num_blocks):
+        n = 1 + (num_res_blocks[x] + 1) * x
+        for i in range(num_res_blocks[x]):
+            for b in UNET_MAP_RESNET:
+                diffusers_unet_map["down_blocks.{}.resnets.{}.{}".format(x, i, UNET_MAP_RESNET[b])] = "input_blocks.{}.0.{}".format(n, b)
+            num_transformers = transformer_depth.pop(0)
+            if num_transformers > 0:
+                for b in UNET_MAP_ATTENTIONS:
+                    diffusers_unet_map["down_blocks.{}.attentions.{}.{}".format(x, i, b)] = "input_blocks.{}.1.{}".format(n, b)
+                for t in range(num_transformers):
+                    for b in TRANSFORMER_BLOCKS:
+                        diffusers_unet_map["down_blocks.{}.attentions.{}.transformer_blocks.{}.{}".format(x, i, t, b)] = "input_blocks.{}.1.transformer_blocks.{}.{}".format(n, t, b)
+            n += 1
+        for k in ["weight", "bias"]:
+            diffusers_unet_map["down_blocks.{}.downsamplers.0.conv.{}".format(x, k)] = "input_blocks.{}.0.op.{}".format(n, k)
+
+    i = 0
+    for b in UNET_MAP_ATTENTIONS:
+        diffusers_unet_map["mid_block.attentions.{}.{}".format(i, b)] = "middle_block.1.{}".format(b)
+    for t in range(transformers_mid):
+        for b in TRANSFORMER_BLOCKS:
+            diffusers_unet_map["mid_block.attentions.{}.transformer_blocks.{}.{}".format(i, t, b)] = "middle_block.1.transformer_blocks.{}.{}".format(t, b)
+
+    for i, n in enumerate([0, 2]):
+        for b in UNET_MAP_RESNET:
+            diffusers_unet_map["mid_block.resnets.{}.{}".format(i, UNET_MAP_RESNET[b])] = "middle_block.{}.{}".format(n, b)
+
+    num_res_blocks = list(reversed(num_res_blocks))
+    for x in range(num_blocks):
+        n = (num_res_blocks[x] + 1) * x
+        l = num_res_blocks[x] + 1
+        for i in range(l):
+            c = 0
+            for b in UNET_MAP_RESNET:
+                diffusers_unet_map["up_blocks.{}.resnets.{}.{}".format(x, i, UNET_MAP_RESNET[b])] = "output_blocks.{}.0.{}".format(n, b)
+            c += 1
+            num_transformers = transformer_depth_output.pop()
+            if num_transformers > 0:
+                c += 1
+                for b in UNET_MAP_ATTENTIONS:
+                    diffusers_unet_map["up_blocks.{}.attentions.{}.{}".format(x, i, b)] = "output_blocks.{}.1.{}".format(n, b)
+                for t in range(num_transformers):
+                    for b in TRANSFORMER_BLOCKS:
+                        diffusers_unet_map["up_blocks.{}.attentions.{}.transformer_blocks.{}.{}".format(x, i, t, b)] = "output_blocks.{}.1.transformer_blocks.{}.{}".format(n, t, b)
+            if i == l - 1:
+                for k in ["weight", "bias"]:
+                    diffusers_unet_map["up_blocks.{}.upsamplers.0.conv.{}".format(x, k)] = "output_blocks.{}.{}.conv.{}".format(n, c, k)
+            n += 1
+
+    for k in UNET_MAP_BASIC:
+        diffusers_unet_map[k[1]] = k[0]
+
+    return diffusers_unet_map
+
+def repeat_to_batch_size(tensor, batch_size):
+    if tensor.shape[0] > batch_size:
+        return tensor[:batch_size]
+    elif tensor.shape[0] < batch_size:
+        return tensor.repeat([math.ceil(batch_size / tensor.shape[0])] + [1] * (len(tensor.shape) - 1))[:batch_size]
+    return tensor
+
+def resize_to_batch_size(tensor, batch_size):
+    in_batch_size = tensor.shape[0]
+    if in_batch_size == batch_size:
+        return tensor
+
+    if batch_size <= 1:
+        return tensor[:batch_size]
+
+    output = torch.empty([batch_size] + list(tensor.shape)[1:], dtype=tensor.dtype, device=tensor.device)
+    if batch_size < in_batch_size:
+        scale = (in_batch_size - 1) / (batch_size - 1)
+        for i in range(batch_size):
+            output[i] = tensor[min(round(i * scale), in_batch_size - 1)]
+    else:
+        scale = in_batch_size / batch_size
+        for i in range(batch_size):
+            output[i] = tensor[min(math.floor((i + 0.5) * scale), in_batch_size - 1)]
+
+    return output
+
+def convert_sd_to(state_dict, dtype):
+    keys = list(state_dict.keys())
+    for k in keys:
+        state_dict[k] = state_dict[k].to(dtype)
+    return state_dict
+
+def safetensors_header(safetensors_path, max_size=100*1024*1024):
+    with open(safetensors_path, "rb") as f:
+        header = f.read(8)
+        length_of_header = struct.unpack('<Q', header)[0]
+        if length_of_header > max_size:
+            return None
+        return f.read(length_of_header)
+
+def set_attr(obj, attr, value):
+    attrs = attr.split(".")
+    for name in attrs[:-1]:
+        obj = getattr(obj, name)
+    prev = getattr(obj, attrs[-1])
+    setattr(obj, attrs[-1], torch.nn.Parameter(value, requires_grad=False))
+    del prev
+
+def copy_to_param(obj, attr, value):
+    # inplace update tensor instead of replacing it
+    attrs = attr.split(".")
+    for name in attrs[:-1]:
+        obj = getattr(obj, name)
+    prev = getattr(obj, attrs[-1])
+    prev.data.copy_(value)
+
+def get_attr(obj, attr):
+    attrs = attr.split(".")
+    for name in attrs:
+        obj = getattr(obj, name)
+    return obj
+
+def bislerp(samples, width, height):
+    def slerp(b1, b2, r):
+        '''slerps batches b1, b2 according to ratio r, batches should be flat e.g. NxC'''
+        
+        c = b1.shape[-1]
+
+        #norms
+        b1_norms = torch.norm(b1, dim=-1, keepdim=True)
+        b2_norms = torch.norm(b2, dim=-1, keepdim=True)
+
+        #normalize
+        b1_normalized = b1 / b1_norms
+        b2_normalized = b2 / b2_norms
+
+        #zero when norms are zero
+        b1_normalized[b1_norms.expand(-1,c) == 0.0] = 0.0
+        b2_normalized[b2_norms.expand(-1,c) == 0.0] = 0.0
+
+        #slerp
+        dot = (b1_normalized*b2_normalized).sum(1)
+        omega = torch.acos(dot)
+        so = torch.sin(omega)
+
+        #technically not mathematically correct, but more pleasing?
+        res = (torch.sin((1.0-r.squeeze(1))*omega)/so).unsqueeze(1)*b1_normalized + (torch.sin(r.squeeze(1)*omega)/so).unsqueeze(1) * b2_normalized
+        res *= (b1_norms * (1.0-r) + b2_norms * r).expand(-1,c)
+
+        #edge cases for same or polar opposites
+        res[dot > 1 - 1e-5] = b1[dot > 1 - 1e-5] 
+        res[dot < 1e-5 - 1] = (b1 * (1.0-r) + b2 * r)[dot < 1e-5 - 1]
+        return res
     
-    for i in range(image_number):
-        if disable_seed_increment:
-            task_seed = seed % (constants.MAX_SEED + 1)
+    def generate_bilinear_data(length_old, length_new, device):
+        coords_1 = torch.arange(length_old, dtype=torch.float32, device=device).reshape((1,1,1,-1))
+        coords_1 = torch.nn.functional.interpolate(coords_1, size=(1, length_new), mode="bilinear")
+        ratios = coords_1 - coords_1.floor()
+        coords_1 = coords_1.to(torch.int64)
+        
+        coords_2 = torch.arange(length_old, dtype=torch.float32, device=device).reshape((1,1,1,-1)) + 1
+        coords_2[:,:,:,-1] -= 1
+        coords_2 = torch.nn.functional.interpolate(coords_2, size=(1, length_new), mode="bilinear")
+        coords_2 = coords_2.to(torch.int64)
+        return ratios, coords_1, coords_2
+
+    orig_dtype = samples.dtype
+    samples = samples.float()
+    n,c,h,w = samples.shape
+    h_new, w_new = (height, width)
+    
+    #linear w
+    ratios, coords_1, coords_2 = generate_bilinear_data(w, w_new, samples.device)
+    coords_1 = coords_1.expand((n, c, h, -1))
+    coords_2 = coords_2.expand((n, c, h, -1))
+    ratios = ratios.expand((n, 1, h, -1))
+
+    pass_1 = samples.gather(-1,coords_1).movedim(1, -1).reshape((-1,c))
+    pass_2 = samples.gather(-1,coords_2).movedim(1, -1).reshape((-1,c))
+    ratios = ratios.movedim(1, -1).reshape((-1,1))
+
+    result = slerp(pass_1, pass_2, ratios)
+    result = result.reshape(n, h, w_new, c).movedim(-1, 1)
+
+    #linear h
+    ratios, coords_1, coords_2 = generate_bilinear_data(h, h_new, samples.device)
+    coords_1 = coords_1.reshape((1,1,-1,1)).expand((n, c, -1, w_new))
+    coords_2 = coords_2.reshape((1,1,-1,1)).expand((n, c, -1, w_new))
+    ratios = ratios.reshape((1,1,-1,1)).expand((n, 1, -1, w_new))
+
+    pass_1 = result.gather(-2,coords_1).movedim(1, -1).reshape((-1,c))
+    pass_2 = result.gather(-2,coords_2).movedim(1, -1).reshape((-1,c))
+    ratios = ratios.movedim(1, -1).reshape((-1,1))
+
+    result = slerp(pass_1, pass_2, ratios)
+    result = result.reshape(n, h_new, w_new, c).movedim(-1, 1)
+    return result.to(orig_dtype)
+
+def lanczos(samples, width, height):
+    images = [Image.fromarray(np.clip(255. * image.movedim(0, -1).cpu().numpy(), 0, 255).astype(np.uint8)) for image in samples]
+    images = [image.resize((width, height), resample=Image.Resampling.LANCZOS) for image in images]
+    images = [torch.from_numpy(np.array(image).astype(np.float32) / 255.0).movedim(-1, 0) for image in images]
+    result = torch.stack(images)
+    return result.to(samples.device, samples.dtype)
+
+def common_upscale(samples, width, height, upscale_method, crop):
+        if crop == "center":
+            old_width = samples.shape[3]
+            old_height = samples.shape[2]
+            old_aspect = old_width / old_height
+            new_aspect = width / height
+            x = 0
+            y = 0
+            if old_aspect > new_aspect:
+                x = round((old_width - old_width * (new_aspect / old_aspect)) / 2)
+            elif old_aspect < new_aspect:
+                y = round((old_height - old_height * (old_aspect / new_aspect)) / 2)
+            s = samples[:,:,y:old_height-y,x:old_width-x]
         else:
-            task_seed = (seed + i) % (constants.MAX_SEED + 1)  # randint is inclusive, % is not
+            s = samples
 
-        task_rng = random.Random(task_seed)  # may bind to inpaint noise in the future
-        task_prompt = apply_wildcards(prompt, task_rng, i, read_wildcards_in_order)
-        task_prompt = apply_arrays(task_prompt, i)
-        task_negative_prompt = apply_wildcards(negative_prompt, task_rng, i, read_wildcards_in_order)
-        task_extra_positive_prompts = [apply_wildcards(pmt, task_rng, i, read_wildcards_in_order) for pmt in extra_positive_prompts]
-        task_extra_negative_prompts = [apply_wildcards(pmt, task_rng, i, read_wildcards_in_order) for pmt in extra_negative_prompts]
-
-        positive_basic_workloads = []
-        negative_basic_workloads = []
-
-        if use_style:
-            for s in style_selections:
-                p, n = apply_style(s, positive=task_prompt)
-                positive_basic_workloads = positive_basic_workloads + p
-                negative_basic_workloads = negative_basic_workloads + n
+        if upscale_method == "bislerp":
+            return bislerp(s, width, height)
+        elif upscale_method == "lanczos":
+            return lanczos(s, width, height)
         else:
-            positive_basic_workloads.append(task_prompt)
+            return torch.nn.functional.interpolate(s, size=(height, width), mode=upscale_method)
 
-        negative_basic_workloads.append(task_negative_prompt)  # Always use independent workload for negative.
+def get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
+    return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
-        positive_basic_workloads = positive_basic_workloads + task_extra_positive_prompts
-        negative_basic_workloads = negative_basic_workloads + task_extra_negative_prompts
+@torch.inference_mode()
+def tiled_scale(samples, function, tile_x=64, tile_y=64, overlap = 8, upscale_amount = 4, out_channels = 3, output_device="cpu", pbar = None):
+    output = torch.empty((samples.shape[0], out_channels, round(samples.shape[2] * upscale_amount), round(samples.shape[3] * upscale_amount)), device=output_device)
+    for b in range(samples.shape[0]):
+        s = samples[b:b+1]
+        out = torch.zeros((s.shape[0], out_channels, round(s.shape[2] * upscale_amount), round(s.shape[3] * upscale_amount)), device=output_device)
+        out_div = torch.zeros((s.shape[0], out_channels, round(s.shape[2] * upscale_amount), round(s.shape[3] * upscale_amount)), device=output_device)
+        for y in range(0, s.shape[2], tile_y - overlap):
+            for x in range(0, s.shape[3], tile_x - overlap):
+                s_in = s[:,:,y:y+tile_y,x:x+tile_x]
 
-        positive_basic_workloads = remove_empty_str(positive_basic_workloads, default=task_prompt)
-        negative_basic_workloads = remove_empty_str(negative_basic_workloads, default=task_negative_prompt)
+                ps = function(s_in).to(output_device)
+                mask = torch.ones_like(ps)
+                feather = round(overlap * upscale_amount)
+                for t in range(feather):
+                        mask[:,:,t:1+t,:] *= ((1.0/feather) * (t + 1))
+                        mask[:,:,mask.shape[2] -1 -t: mask.shape[2]-t,:] *= ((1.0/feather) * (t + 1))
+                        mask[:,:,:,t:1+t] *= ((1.0/feather) * (t + 1))
+                        mask[:,:,:,mask.shape[3]- 1 - t: mask.shape[3]- t] *= ((1.0/feather) * (t + 1))
+                out[:,:,round(y*upscale_amount):round((y+tile_y)*upscale_amount),round(x*upscale_amount):round((x+tile_x)*upscale_amount)] += ps * mask
+                out_div[:,:,round(y*upscale_amount):round((y+tile_y)*upscale_amount),round(x*upscale_amount):round((x+tile_x)*upscale_amount)] += mask
+                if pbar is not None:
+                    pbar.update(1)
 
-        tasks.append(dict(
-            task_seed=task_seed,
-            task_prompt=task_prompt,
-            task_negative_prompt=task_negative_prompt,
-            positive=positive_basic_workloads,
-            negative=negative_basic_workloads,
-            expansion='',
-            c=None,
-            uc=None,
-            positive_top_k=len(positive_basic_workloads),
-            negative_top_k=len(negative_basic_workloads),
-            log_positive_prompt='\n'.join([task_prompt] + task_extra_positive_prompts),
-            log_negative_prompt='\n'.join([task_negative_prompt] + task_extra_negative_prompts),
-        ))
+        output[b:b+1] = out/out_div
+    return output
 
-    if use_expansion:
-        for i, t in enumerate(tasks):
-            progressbar(async_task, 5, f'Preparing Fooocus text #{i + 1} ...')
-            expansion = pipeline.final_expansion(t['task_prompt'], t['task_seed'])
-            print(f'[Prompt Expansion] {expansion}')
-            t['expansion'] = expansion
-            t['positive'] = copy.deepcopy(t['positive']) + [expansion]  # Deep copy.
+PROGRESS_BAR_ENABLED = True
+def set_progress_bar_enabled(enabled):
+    global PROGRESS_BAR_ENABLED
+    PROGRESS_BAR_ENABLED = enabled
 
-    for i, t in enumerate(tasks):
-        progressbar(async_task, 7, f'Encoding positive #{i + 1} ...')
-        t['c'] = pipeline.clip_encode(texts=t['positive'], pool_top_k=t['positive_top_k'])
+PROGRESS_BAR_HOOK = None
+def set_progress_bar_global_hook(function):
+    global PROGRESS_BAR_HOOK
+    PROGRESS_BAR_HOOK = function
 
-    for i, t in enumerate(tasks):
-        if abs(float(cfg_scale) - 1.0) < 1e-4:
-            t['uc'] = pipeline.clone_cond(t['c'])
-        else:
-            progressbar(async_task, 10, f'Encoding negative #{i + 1} ...')
-            t['uc'] = pipeline.clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
+class ProgressBar:
+    def __init__(self, total):
+        global PROGRESS_BAR_HOOK
+        self.total = total
+        self.current = 0
+        self.hook = PROGRESS_BAR_HOOK
 
+    def update_absolute(self, value, total=None, preview=None):
+        if total is not None:
+            self.total = total
+        if value > self.total:
+            value = self.total
+        self.current = value
+        if self.hook is not None:
+            self.hook(self.current, self.total, preview)
 
-def inpaint_goals(goals):
-    if 'inpaint' in goals:
-        if len(outpaint_selections) > 0:
-            H, W, C = inpaint_image.shape
-            if 'top' in outpaint_selections:
-                inpaint_image = np.pad(inpaint_image, [[int(H * 0.3), 0], [0, 0], [0, 0]], mode='edge')
-                inpaint_mask = np.pad(inpaint_mask, [[int(H * 0.3), 0], [0, 0]], mode='constant',
-                                        constant_values=255)
-            if 'bottom' in outpaint_selections:
-                inpaint_image = np.pad(inpaint_image, [[0, int(H * 0.3)], [0, 0], [0, 0]], mode='edge')
-                inpaint_mask = np.pad(inpaint_mask, [[0, int(H * 0.3)], [0, 0]], mode='constant',
-                                        constant_values=255)
-
-            H, W, C = inpaint_image.shape
-            if 'left' in outpaint_selections:
-                inpaint_image = np.pad(inpaint_image, [[0, 0], [int(W * 0.3), 0], [0, 0]], mode='edge')
-                inpaint_mask = np.pad(inpaint_mask, [[0, 0], [int(W * 0.3), 0]], mode='constant',
-                                        constant_values=255)
-            if 'right' in outpaint_selections:
-                inpaint_image = np.pad(inpaint_image, [[0, 0], [0, int(W * 0.3)], [0, 0]], mode='edge')
-                inpaint_mask = np.pad(inpaint_mask, [[0, 0], [0, int(W * 0.3)]], mode='constant',
-                                        constant_values=255)
-
-            inpaint_image = np.ascontiguousarray(inpaint_image.copy())
-            inpaint_mask = np.ascontiguousarray(inpaint_mask.copy())
-            inpaint_strength = 1.0
-            inpaint_respective_field = 1.0
-
-        denoising_strength = inpaint_strength
-
-        inpaint_worker.current_task = inpaint_worker.InpaintWorker(
-            image=inpaint_image,
-            mask=inpaint_mask,
-            use_fill=denoising_strength > 0.99,
-            k=inpaint_respective_field
-        )
-
-        if debugging_inpaint_preprocessor:
-            yield_result(async_task, inpaint_worker.current_task.visualize_mask_processing(),
-                            do_not_show_finished_images=True)
-            return
-
-        progressbar(async_task, 13, 'VAE Inpaint encoding ...')
-
-        inpaint_pixel_fill = core.numpy_to_pytorch(inpaint_worker.current_task.interested_fill)
-        inpaint_pixel_image = core.numpy_to_pytorch(inpaint_worker.current_task.interested_image)
-        inpaint_pixel_mask = core.numpy_to_pytorch(inpaint_worker.current_task.interested_mask)
-
-        candidate_vae, candidate_vae_swap = pipeline.get_candidate_vae(
-            steps=steps,
-            switch=switch,
-            denoise=denoising_strength,
-            refiner_swap_method=refiner_swap_method
-        )
-
-        latent_inpaint, latent_mask = core.encode_vae_inpaint(
-            mask=inpaint_pixel_mask,
-            vae=candidate_vae,
-            pixels=inpaint_pixel_image)
-
-        latent_swap = None
-        if candidate_vae_swap is not None:
-            progressbar(async_task, 13, 'VAE SD15 encoding ...')
-            latent_swap = core.encode_vae(
-                vae=candidate_vae_swap,
-                pixels=inpaint_pixel_fill)['samples']
-
-        progressbar(async_task, 13, 'VAE encoding ...')
-        latent_fill = core.encode_vae(
-            vae=candidate_vae,
-            pixels=inpaint_pixel_fill)['samples']
-
-        inpaint_worker.current_task.load_latent(
-            latent_fill=latent_fill, latent_mask=latent_mask, latent_swap=latent_swap)
-
-        if inpaint_parameterized:
-            pipeline.final_unet = inpaint_worker.current_task.patch(
-                inpaint_head_model_path=inpaint_head_model_path,
-                inpaint_latent=latent_inpaint,
-                inpaint_latent_mask=latent_mask,
-                model=pipeline.final_unet
-            )
-
-        if not inpaint_disable_initial_latent:
-            initial_latent = {'samples': latent_fill}
-
-        B, C, H, W = latent_fill.shape
-        height, width = H * 8, W * 8
-        final_height, final_width = inpaint_worker.current_task.image.shape[:2]
-        print(f'Final resolution is {str((final_height, final_width))}, latent is {str((height, width))}.')
-
-
-def generate_image():
-    imgs = pipeline.process_diffusion(
-        positive_cond=positive_cond,
-        negative_cond=negative_cond,
-        steps=steps,
-        switch=switch,
-        width=width,
-        height=height,
-        image_seed=task['task_seed'],
-        callback=callback,
-        sampler_name=final_sampler_name,
-        scheduler_name=final_scheduler_name,
-        latent=initial_latent,
-        denoise=denoising_strength,
-        tiled=tiled,
-        cfg_scale=cfg_scale,
-        refiner_swap_method=refiner_swap_method,
-        disable_preview=disable_preview
-    )
-
-    del task['c'], task['uc'], positive_cond, negative_cond  # Save memory
-
-    if inpaint_worker.current_task is not None:
-        imgs = [inpaint_worker.current_task.post_process(x) for x in imgs]
-
-    img_paths = []
-    for x in imgs:
-        d = [('Prompt', 'prompt', task['log_positive_prompt']),
-                ('Negative Prompt', 'negative_prompt', task['log_negative_prompt']),
-                ('Fooocus V2 Expansion', 'prompt_expansion', task['expansion']),
-                ('Styles', 'styles', str(raw_style_selections)),
-                ('Performance', 'performance', performance_selection.value)]
-
-        if performance_selection.steps() != steps:
-            d.append(('Steps', 'steps', steps))
-
-        d += [('Resolution', 'resolution', str((width, height))),
-                ('Guidance Scale', 'guidance_scale', guidance_scale),
-                ('Sharpness', 'sharpness', sharpness),
-                ('ADM Guidance', 'adm_guidance', str((
-                    modules.patch.patch_settings[pid].positive_adm_scale,
-                    modules.patch.patch_settings[pid].negative_adm_scale,
-                    modules.patch.patch_settings[pid].adm_scaler_end))),
-                ('Base Model', 'base_model', base_model_name),
-                ('Refiner Model', 'refiner_model', refiner_model_name),
-                ('Refiner Switch', 'refiner_switch', refiner_switch)]
-
-        if refiner_model_name != 'None':
-            if overwrite_switch > 0:
-                d.append(('Overwrite Switch', 'overwrite_switch', overwrite_switch))
-            if refiner_swap_method != flags.refiner_swap_method:
-                d.append(('Refiner Swap Method', 'refiner_swap_method', refiner_swap_method))
-        if modules.patch.patch_settings[pid].adaptive_cfg != modules.config.default_cfg_tsnr:
-            d.append(('CFG Mimicking from TSNR', 'adaptive_cfg', modules.patch.patch_settings[pid].adaptive_cfg))
-
-        d.append(('Sampler', 'sampler', sampler_name))
-        d.append(('Scheduler', 'scheduler', scheduler_name))
-        d.append(('Seed', 'seed', str(task['task_seed'])))
-
-        if freeu_enabled:
-            d.append(('FreeU', 'freeu', str((freeu_b1, freeu_b2, freeu_s1, freeu_s2))))
-
-        for li, (n, w) in enumerate(loras):
-            if n != 'None':
-                d.append((f'LoRA {li + 1}', f'lora_combined_{li + 1}', f'{n} : {w}'))
-
-        metadata_parser = None
-        if save_metadata_to_images:
-            metadata_parser = modules.meta_parser.get_metadata_parser(metadata_scheme)
-            metadata_parser.set_data(task['log_positive_prompt'], task['positive'],
-                                        task['log_negative_prompt'], task['negative'],
-                                        steps, base_model_name, refiner_model_name, loras)
-        d.append(('Metadata Scheme', 'metadata_scheme', metadata_scheme.value if save_metadata_to_images else save_metadata_to_images))
-        d.append(('Version', 'version', 'Fooocus v' + fooocus_version.version))
-        img_paths.append(log(x, d, metadata_parser, output_format))
-
-    yield_result(async_task, img_paths, do_not_show_finished_images=len(tasks) == 1 or disable_intermediate_results)
+    def update(self, value):
+        self.update_absolute(self.current + value)
