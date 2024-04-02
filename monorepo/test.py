@@ -1,3 +1,5 @@
+import os
+
 sampler_name = "dpmpp_2m_sde_gpu"
 scheduler_name = "karras"
 steps = 30
@@ -24,38 +26,40 @@ use_style = True
 inpaint_patch_model_path = "inpaint_v26.fooocus.patch"
 base_model_additional_loras += [(inpaint_patch_model_path, 1.0)]
 
+MODEL_DIR = ".cache"
+
 
 def downloading_inpaint_models():
     load_file_from_url(
             url='https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/fooocus_inpaint_head.pth',
-            model_dir=path_inpaint,
+            model_dir=MODEL_DIR,
             file_name='fooocus_inpaint_head.pth'
         )
-    head_file = os.path.join(path_inpaint, 'fooocus_inpaint_head.pth')
+    head_file = os.path.join(MODEL_DIR, 'fooocus_inpaint_head.pth')
     patch_file = None
 
     load_file_from_url(
                 url='https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/inpaint_v26.fooocus.patch',
-                model_dir=path_inpaint,
+                model_dir=MODEL_DIR,
                 file_name='inpaint_v26.fooocus.patch'
             )
-    patch_file = os.path.join(path_inpaint, 'inpaint_v26.fooocus.patch')
+    patch_file = os.path.join(MODEL_DIR, 'inpaint_v26.fooocus.patch')
 
 
 def download_models():
     load_file_from_url(
         url='https://huggingface.co/lllyasviel/misc/resolve/main/fooocus_expansion.bin',
-        model_dir=config.path_fooocus_expansion,
+        model_dir=MODEL_DIR,
         file_name='pytorch_model.bin'
     )
     load_file_from_url(
         url='https://huggingface.co/stabilityai/sdxl-turbo/resolve/main/sd_xl_turbo_1.0_fp16.safetensors',
-        model_dir=config.path_fooocus_expansion,
+        model_dir=MODEL_DIR,
         file_name='sd_xl_turbo_1.0_fp16.safetensors'
     )
 
 
-def load_inpaint_images():
+def load_inpaint_images(inpaint_input_image):
     inpaint_image = inpaint_input_image['image']
     inpaint_mask = inpaint_input_image['mask'][:, :, 0]
 
@@ -75,7 +79,7 @@ def load_inpaint_images():
     if isinstance(inpaint_image, np.ndarray) and isinstance(inpaint_mask, np.ndarray) \
             and (np.any(inpaint_mask > 127) or len(outpaint_selections) > 0):
         progressbar(async_task, 1, 'Downloading upscale models ...')
-        modules.config.downloading_upscale_model()
+        # modules.config.downloading_upscale_model()
         if inpaint_parameterized:
             progressbar(async_task, 1, 'Downloading inpainter ...')
             inpaint_head_model_path, inpaint_patch_model_path = modules.config.downloading_inpaint_models(
