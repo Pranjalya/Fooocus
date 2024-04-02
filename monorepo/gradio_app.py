@@ -1,8 +1,10 @@
+import os
+import random
+import numpy as np
 import gradio as gr
 import gradio_hijack as grh
-import os
-import numpy as np
 from utils import erode_or_dilate, HWC3
+from expansion import safe_str
 
 
 MODEL_DIR = ".cache"
@@ -71,6 +73,131 @@ def load_inpaint_images(inpaint_input_image, inpaint_erode_or_dilate, refiner_mo
             refiner_switch = 0.8
     return inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
         base_model_additional_loras, use_synthetic_refiner, refiner_switch
+
+
+
+def expand_prompt(
+    prompt,
+    negative_prompt,
+    image_number=2,
+    base_model_name="",
+    refiner_model_name="None",
+    base_model_additional_loras=[],
+    use_synthetic_refiner=True,
+    seed=123456
+):
+    prompts = remove_empty_str([safe_str(p) for p in prompt.splitlines()], default='')
+    negative_prompts = remove_empty_str([safe_str(p) for p in negative_prompt.splitlines()], default='')
+
+    prompt = prompts[0]
+    negative_prompt = negative_prompts[0]
+
+    if prompt == '':
+        # disable expansion when empty since it is not meaningful and influences image prompt
+        use_expansion = False
+
+    extra_positive_prompts = prompts[1:] if len(prompts) > 1 else []
+    extra_negative_prompts = negative_prompts[1:] if len(negative_prompts) > 1 else []
+
+    print('Loading models ...')
+    print("Models")
+    print("refiner_model_name", refiner_model_name)
+    print("base_model_name", base_model_name)
+    print("loras", [])
+    print("base_model_additional_loras", base_model_additional_loras)
+    print("use_synthetic_refiner", use_synthetic_refiner)
+    print("refiner_swap_method", refiner_swap_method)
+
+    pipeline.refresh_everything(refiner_model_name=refiner_model_name, base_model_name=base_model_name,
+                                loras=[], base_model_additional_loras=base_model_additional_loras,
+                                use_synthetic_refiner=use_synthetic_refiner)
+
+    print('Processing prompts ...')
+    tasks = []
+    
+    for i in range(image_number):
+        task_seed = (seed + i) % (1234569)  # randint is inclusive, % is not
+
+        task_rng = random.Random(task_seed)  # may bind to inpaint noise in the future
+        task_prompt = apply_wildcards(prompt, task_rng, i, read_wildcards_in_order)
+        task_prompt = apply_arrays(task_prompt, i)
+        task_negative_prompt = apply_wildcards(negative_prompt, task_rng, i, read_wildcards_in_order)
+        task_extra_positive_prompts = [apply_wildcards(pmt, task_rng, i, read_wildcards_in_order) for pmt in extra_positive_prompts]
+        task_extra_negative_prompts = [apply_wildcards(pmt, task_rng, i, read_wildcards_in_order) for pmt in extra_negative_prompts]
+
+        positive_basic_workloads = []
+        negative_basic_workloads = []
+
+        if use_style:
+            for s in style_selections:
+                p, n = apply_style(s, positive=task_prompt)
+                positive_basic_workloads = positive_basic_workloads + p
+                negative_basic_workloads = negative_basic_workloads + n
+        else:
+            positive_basic_workloads.append(task_prompt)
+
+        negative_basic_workloads.append(task_negative_prompt)  # Always use independent workload for negative.
+
+        positive_basic_workloads = positive_basic_workloads + task_extra_positive_prompts
+        negative_basic_workloads = negative_basic_workloads + task_extra_negative_prompts
+
+        positive_basic_workloads = remove_empty_str(positive_basic_workloads, default=task_prompt)
+        negative_basic_workloads = remove_empty_str(negative_basic_workloads, default=task_negative_prompt)
+
+        tasks.append(dict(
+            task_seed=task_seed,
+            task_prompt=task_prompt,
+            task_negative_prompt=task_negative_prompt,
+            positive=positive_basic_workloads,
+            negative=negative_basic_workloads,
+            expansion='',
+            c=None,
+            uc=None,
+            positive_top_k=len(positive_basic_workloads),
+            negative_top_k=len(negative_basic_workloads),
+            log_positive_prompt='\n'.join([task_prompt] + task_extra_positive_prompts),
+            log_negative_prompt='\n'.join([task_negative_prompt] + task_extra_negative_prompts),
+        ))
+
+    if use_expansion:
+        for i, t in enumerate(tasks):
+            progressbar(async_task, 5, f'Preparing Fooocus text #{i + 1} ...')
+            expansion = pipeline.final_expansion(t['task_prompt'], t['task_seed'])
+            print(f'[Prompt Expansion] {expansion}')
+            t['expansion'] = expansion
+            t['positive'] = copy.deepcopy(t['positive']) + [expansion]  # Deep copy.
+
+    for i, t in enumerate(tasks):
+        progressbar(async_task, 7, f'Encoding positive #{i + 1} ...')
+        t['c'] = pipeline.clip_encode(texts=t['positive'], pool_top_k=t['positive_top_k'])
+
+    for i, t in enumerate(tasks):
+        if abs(float(cfg_scale) - 1.0) < 1e-4:
+            t['uc'] = pipeline.clone_cond(t['c'])
+        else:
+            progressbar(async_task, 10, f'Encoding negative #{i + 1} ...')
+            t['uc'] = pipeline.clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
+
+
+
+
+def inpaint_image(
+    inpaint_input_image,
+    inpaint_erode_or_dilate,
+    steps,
+    refiner_switch,
+    prompt="",
+    negative_prompt="",
+    width=1024,
+    height=1024,
+    sampler_name="dpmpp_2m_sde_gpu",
+    scheduler_name="karras"
+):
+    inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
+        base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_erode_or_dilate, refiner_model_name="None")
+    switch = int(round(steps * refiner_switch))
+    print(f'[Parameters] Sampler = {sampler_name} - {scheduler_name}')
+    print(f'[Parameters] Steps = {steps} - {switch}')
 
 
 

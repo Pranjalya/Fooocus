@@ -8,11 +8,11 @@
 import os
 import torch
 import math
-import ldm_patched.modules.model_management as model_management
+import model_management as model_management
 
 from transformers.generation.logits_process import LogitsProcessorList
 from transformers import AutoTokenizer, AutoModelForCausalLM, set_seed
-from ldm_patched.modules.model_patcher import ModelPatcher
+from model_patcher import ModelPatcher
 
 
 # limitation of np.random.seed(), called from transformers.set_seed()

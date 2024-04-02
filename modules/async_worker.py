@@ -387,9 +387,6 @@ def worker():
                 progressbar(async_task, 1, 'Loading control models ...')
 
         # Load or unload CNs
-        print("CONTROL NET")
-        print(controlnet_canny_path, controlnet_cpds_path)
-        print(clip_vision_path, ip_negative_path, ip_adapter_path, ip_adapter_face_path)
         pipeline.refresh_controlnets([controlnet_canny_path, controlnet_cpds_path])
         ip_adapter.load_ip_adapter(clip_vision_path, ip_negative_path, ip_adapter_path)
         ip_adapter.load_ip_adapter(clip_vision_path, ip_negative_path, ip_adapter_face_path)

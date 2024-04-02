@@ -101,6 +101,31 @@ def load_inpaint_images(inpaint_input_image):
 
 
 def expand_prompt():
+    prompts = remove_empty_str([safe_str(p) for p in prompt.splitlines()], default='')
+    negative_prompts = remove_empty_str([safe_str(p) for p in negative_prompt.splitlines()], default='')
+
+    prompt = prompts[0]
+    negative_prompt = negative_prompts[0]
+
+    if prompt == '':
+        # disable expansion when empty since it is not meaningful and influences image prompt
+        use_expansion = False
+
+    extra_positive_prompts = prompts[1:] if len(prompts) > 1 else []
+    extra_negative_prompts = negative_prompts[1:] if len(negative_prompts) > 1 else []
+
+    progressbar(async_task, 3, 'Loading models ...')
+    print("Models")
+    print("refiner_model_name", refiner_model_name)
+    print("base_model_name", base_model_name)
+    print("loras", loras)
+    print("base_model_additional_loras", base_model_additional_loras)
+    print("use_synthetic_refiner", use_synthetic_refiner)
+    print("refiner_swap_method", refiner_swap_method)
+    pipeline.refresh_everything(refiner_model_name=refiner_model_name, base_model_name=base_model_name,
+                                loras=loras, base_model_additional_loras=base_model_additional_loras,
+                                use_synthetic_refiner=use_synthetic_refiner)
+
     progressbar(async_task, 3, 'Processing prompts ...')
     tasks = []
     
