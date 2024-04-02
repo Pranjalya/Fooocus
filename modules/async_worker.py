@@ -426,6 +426,13 @@ def worker():
             extra_negative_prompts = negative_prompts[1:] if len(negative_prompts) > 1 else []
 
             progressbar(async_task, 3, 'Loading models ...')
+            print("Models")
+            print("refiner_model_name", refiner_model_name)
+            print("base_model_name", base_model_name)
+            print("loras", loras)
+            print("base_model_additional_loras", base_model_additional_loras)
+            print("use_synthetic_refiner", use_synthetic_refiner)
+            print("refiner_swap_method", refiner_swap_method)
             pipeline.refresh_everything(refiner_model_name=refiner_model_name, base_model_name=base_model_name,
                                         loras=loras, base_model_additional_loras=base_model_additional_loras,
                                         use_synthetic_refiner=use_synthetic_refiner)
