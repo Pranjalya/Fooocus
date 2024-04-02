@@ -101,6 +101,13 @@ Refiner disabled because base model and refiner are same.
 [Parameters] Steps = 30 - 24
 [Fooocus] Initializing ...
 [Fooocus] Loading models ...
+Models
+refiner_model_name None
+base_model_name sd_xl_turbo_1.0_fp16.safetensors
+loras [['None', 0.1], ['None', 1.0], ['None', 1.0], ['None', 1.0], ['None', 1.0]]
+base_model_additional_loras [('/content/Fooocus/models/inpaint/inpaint_v26.fooocus.patch', 1.0)]
+use_synthetic_refiner True
+refiner_swap_method joint
 Synthetic Refiner Activated
 Synthetic Refiner Activated
 Request to load LoRAs [['None', 0.1], ['None', 1.0], ['None', 1.0], ['None', 1.0], ['None', 1.0]] for model [/content/Fooocus/models/checkpoints/sd_xl_turbo_1.0_fp16.safetensors].
