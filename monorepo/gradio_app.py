@@ -1,9 +1,10 @@
 import os
+import copy
 import random
 import numpy as np
 import gradio as gr
 import gradio_hijack as grh
-from utils import erode_or_dilate, HWC3
+from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str
 from expansion import safe_str
 
 
@@ -84,8 +85,18 @@ def expand_prompt(
     refiner_model_name="None",
     base_model_additional_loras=[],
     use_synthetic_refiner=True,
-    seed=123456
+    seed=123456,
+    style_selections=[]
 ):
+
+    fooocus_expansion = "Fooocus V2"
+    if fooocus_expansion in style_selections:
+        use_expansion = True
+        style_selections.remove(fooocus_expansion)
+    else:
+        use_expansion = False
+    use_style = len(style_selections) > 0
+
     prompts = remove_empty_str([safe_str(p) for p in prompt.splitlines()], default='')
     negative_prompts = remove_empty_str([safe_str(p) for p in negative_prompt.splitlines()], default='')
 
@@ -119,11 +130,11 @@ def expand_prompt(
         task_seed = (seed + i) % (1234569)  # randint is inclusive, % is not
 
         task_rng = random.Random(task_seed)  # may bind to inpaint noise in the future
-        task_prompt = apply_wildcards(prompt, task_rng, i, read_wildcards_in_order)
+        task_prompt = apply_wildcards(prompt, task_rng, i, False)
         task_prompt = apply_arrays(task_prompt, i)
-        task_negative_prompt = apply_wildcards(negative_prompt, task_rng, i, read_wildcards_in_order)
-        task_extra_positive_prompts = [apply_wildcards(pmt, task_rng, i, read_wildcards_in_order) for pmt in extra_positive_prompts]
-        task_extra_negative_prompts = [apply_wildcards(pmt, task_rng, i, read_wildcards_in_order) for pmt in extra_negative_prompts]
+        task_negative_prompt = apply_wildcards(negative_prompt, task_rng, i, False)
+        task_extra_positive_prompts = [apply_wildcards(pmt, task_rng, i, False) for pmt in extra_positive_prompts]
+        task_extra_negative_prompts = [apply_wildcards(pmt, task_rng, i, False) for pmt in extra_negative_prompts]
 
         positive_basic_workloads = []
         negative_basic_workloads = []
@@ -161,7 +172,7 @@ def expand_prompt(
 
     if use_expansion:
         for i, t in enumerate(tasks):
-            progressbar(async_task, 5, f'Preparing Fooocus text #{i + 1} ...')
+            print(f'Preparing Fooocus text #{i + 1} ...')
             expansion = pipeline.final_expansion(t['task_prompt'], t['task_seed'])
             print(f'[Prompt Expansion] {expansion}')
             t['expansion'] = expansion
@@ -191,7 +202,8 @@ def inpaint_image(
     width=1024,
     height=1024,
     sampler_name="dpmpp_2m_sde_gpu",
-    scheduler_name="karras"
+    scheduler_name="karras",
+    style_selections=[]
 ):
     inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
         base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_erode_or_dilate, refiner_model_name="None")
@@ -249,4 +261,9 @@ with gr.Blocks() as demo:
                                     value="dpmpp_2m_sde_gpu")
         scheduler_name = gr.Dropdown(label='Scheduler', choices=["karras"],
                                         value="karras")
-
+    with gr.Row():
+        style_selections = gr.CheckboxGroup(show_label=False, container=False,
+                                                    choices=["Fooocus V2", "Fooocus Enhance", "Fooocus Sharp"],
+                                                    value=["Fooocus V2", "Fooocus Enhance", "Fooocus Sharp"],
+                                                    label='Selected Styles',
+                                                    elem_classes=['style_selections'])

@@ -15,6 +15,29 @@ from PIL import Image
 LANCZOS = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
 HASH_SHA256_LENGTH = 10
 
+
+def normalize_key(k):
+    k = k.replace('-', ' ')
+    words = k.split(' ')
+    words = [w[:1].upper() + w[1:].lower() for w in words]
+    k = ' '.join(words)
+    k = k.replace('3d', '3D')
+    k = k.replace('Sai', 'SAI')
+    k = k.replace('Mre', 'MRE')
+    k = k.replace('(s', '(S')
+    return k
+
+
+def get_styles():
+    with open("./sdxl_styles_fooocus.json", encoding='utf-8') as f:
+        for entry in json.load(f):
+            name = normalize_key(entry['name'])
+            prompt = entry['prompt'] if 'prompt' in entry else ''
+            negative_prompt = entry['negative_prompt'] if 'negative_prompt' in entry else ''
+            styles[name] = (prompt, negative_prompt)
+    return styles
+
+
 def erode_or_dilate(x, k):
     k = int(k)
     if k > 0:
@@ -69,3 +92,59 @@ def apply_wildcards(wildcard_text, rng, i, read_wildcards_in_order):
 
     print(f'[Wildcards] BFS stack overflow. Current text: {wildcard_text}')
     return wildcard_text
+
+
+def get_words(arrays, totalMult, index):
+    if len(arrays) == 1:
+        return [arrays[0].split(',')[index]]
+    else:
+        words = arrays[0].split(',')
+        word = words[index % len(words)]
+        index -= index % len(words)
+        index /= len(words)
+        index = math.floor(index)
+        return [word] + get_words(arrays[1:], math.floor(totalMult/len(words)), index)
+
+
+def apply_arrays(text, index):
+    arrays = re.findall(r'\[\[(.*?)\]\]', text)
+    if len(arrays) == 0:
+        return text
+
+    print(f'[Arrays] processing: {text}')
+    mult = 1
+    for arr in arrays:
+        words = arr.split(',')
+        mult *= len(words)
+    
+    index %= mult
+    chosen_words = get_words(arrays, mult, index)
+    
+    i = 0
+    for arr in arrays:
+        text = text.replace(f'[[{arr}]]', chosen_words[i], 1)   
+        i = i+1
+    
+    return text
+
+
+def apply_style(style, positive):
+    styles = get_styles()
+    p, n = styles[style]
+    return p.replace('{prompt}', positive).splitlines(), n.splitlines()
+
+
+def remove_empty_str(items, default=None):
+    items = [x for x in items if x != ""]
+    if len(items) == 0 and default is not None:
+        return [default]
+    return items
+
+
+def join_prompts(*args, **kwargs):
+    prompts = [str(x) for x in args if str(x) != ""]
+    if len(prompts) == 0:
+        return ""
+    if len(prompts) == 1:
+        return prompts[0]
+    return ', '.join(prompts)
