@@ -1,16 +1,23 @@
 import os
 import copy
 import random
+import torch
+import core
 import numpy as np
 import gradio as gr
 import gradio_hijack as grh
 from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str
-from expansion import safe_str
+from expansion import safe_str, FooocusExpansion
 
 
 MODEL_DIR = ".cache"
 os.makedirs(MODEL_DIR, exist_ok=True)
 
+
+@torch.no_grad()
+@torch.inference_mode()
+def prepare_text_encoder(final_clip, final_expansion, async_call=True):
+    ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
 
 
 def downloading_inpaint_models():
@@ -34,7 +41,7 @@ def downloading_inpaint_models():
 def download_models():
     load_file_from_url(
         url='https://huggingface.co/lllyasviel/misc/resolve/main/fooocus_expansion.bin',
-        model_dir=MODEL_DIR,
+        model_dir=os.path.join(MODEL_DIR, "fooocus_expansion"),
         file_name='pytorch_model.bin'
     )
     load_file_from_url(
@@ -43,6 +50,39 @@ def download_models():
         file_name='sd_xl_turbo_1.0_fp16.safetensors'
     )
 
+
+def load_model(filename, base_model_additional_loras):
+    final_expansion = None
+
+    model_base = core.StableDiffusionModel()
+    model_base = core.load_model(filename)
+    print(f'Base model loaded: {model_base.filename}')
+
+    model_refiner = core.StableDiffusionModel(
+        unet=model_base.unet,
+        vae=model_base.vae,
+        clip=model_base.clip,
+        clip_vision=model_base.clip_vision,
+        filename=model_base.filename
+    )
+    model_refiner.vae = None
+    model_refiner.clip = None
+    model_refiner.clip_vision = None
+
+    model_base.refresh_loras(base_model_additional_loras)
+
+    final_unet = model_base.unet_with_lora
+    final_clip = model_base.clip_with_lora
+    final_vae = model_base.vae
+
+    final_refiner_unet = model_refiner.unet_with_lora
+    final_refiner_vae = model_refiner.vae
+
+    if final_expansion is None:
+        final_expansion = FooocusExpansion()
+
+    prepare_text_encoder(final_clip, final_expansion, async_call=True)
+    return final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip
 
 
 # Functions
@@ -119,9 +159,9 @@ def expand_prompt(
     print("use_synthetic_refiner", use_synthetic_refiner)
     print("refiner_swap_method", refiner_swap_method)
 
-    pipeline.refresh_everything(refiner_model_name=refiner_model_name, base_model_name=base_model_name,
-                                loras=[], base_model_additional_loras=base_model_additional_loras,
-                                use_synthetic_refiner=use_synthetic_refiner)
+    # pipeline.refresh_everything(refiner_model_name=refiner_model_name, base_model_name=base_model_name,
+    #                             loras=[], base_model_additional_loras=base_model_additional_loras,
+    #                             use_synthetic_refiner=use_synthetic_refiner)
 
     print('Processing prompts ...')
     tasks = []
@@ -267,3 +307,18 @@ with gr.Blocks() as demo:
                                                     value=["Fooocus V2", "Fooocus Enhance", "Fooocus Sharp"],
                                                     label='Selected Styles',
                                                     elem_classes=['style_selections'])
+    with gr.Row():
+        prompt = gr.Textbox(show_label=False, placeholder="Type prompt here or paste parameters.", elem_id='positive_prompt',
+                                        container=False, autofocus=True, elem_classes='type_row', lines=1024)
+        negative_prompt = gr.Textbox(label='Negative Prompt', show_label=True, placeholder="Type prompt here.",
+                                             info='Describing what you do not want to see.', lines=2,
+                                             elem_id='negative_prompt')
+    with gr.Row():
+        num_images = gr.Slider(1, 10, value=2, step=1, label="Number of images")
+        generate = gr.Button(label="Generate Images")
+    
+    gallery = gr.Gallery(label='Gallery', show_label=False, object_fit='contain', visible=True, height=1024,
+                                 elem_classes=['resizable_area', 'main_view', 'final_gallery', 'image_gallery'],
+                                 elem_id='final_gallery')
+
+    generate.click(trigger_inpaint, [], gallery)
