@@ -255,6 +255,28 @@ def inpaint_image(
 
 
 
+def trigger_inpaint(
+    inpaint_input_image, 
+    inpaint_mask_image,
+    steps_count=30,
+    refiner_switch=0.8,
+    guidance_scale=7.0,
+    sharpness=10.0,
+    inpaint_strength=1.0,
+    inpaint_respective_field=0,
+    inpaint_erode_or_dilate=0,
+    adaptive_cfg=4.0,
+    sampler_name="dpmpp_2m_sde_gpu",
+    scheduler_name="karras",
+    style_selections=["Fooocus V2", "Fooocus Enhance", "Fooocus Sharp"],
+    prompt="bright",
+    negative_prompt="",
+    num_images=2,
+):
+    inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
+        base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_mask_image)
+    return []
+
 
 with gr.Blocks() as demo:
     gr.Markdown("# Foooooooocus SDXL Turbo")
@@ -274,7 +296,6 @@ with gr.Blocks() as demo:
                                            value=7.0,
                                            info='Higher value means style is cleaner, vivider, and more artistic.')
         sharpness = gr.Slider(label='Image Sharpness', minimum=0.0, maximum=30.0, step=0.001, value=10.0,
-                                value=modules.config.default_sample_sharpness,
                                 info='Higher value means image and texture are sharper.')
     with gr.Row():
         inpaint_strength = gr.Slider(label='Inpaint Denoising Strength',
@@ -323,4 +344,7 @@ with gr.Blocks() as demo:
                                  elem_classes=['resizable_area', 'main_view', 'final_gallery', 'image_gallery'],
                                  elem_id='final_gallery')
 
-    generate.click(trigger_inpaint, [], gallery)
+    generate.click(trigger_inpaint, [inpaint_input_image,  inpaint_mask_image, steps_count, refiner_switch, guidance_scale, sharpness, inpaint_strength, inpaint_respective_field, inpaint_erode_or_dilate, adaptive_cfg, sampler_name, scheduler_name, style_selections, prompt, negative_prompt, num_images], gallery)
+
+
+demo.launch()
