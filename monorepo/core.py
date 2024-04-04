@@ -219,47 +219,6 @@ VAE_approx_models = {}
 
 @torch.no_grad()
 @torch.inference_mode()
-def get_previewer(model):
-    global VAE_approx_models
-
-    from modules.config import path_vae_approx
-    is_sdxl = isinstance(model.model.latent_format, ldm_patched.modules.latent_formats.SDXL)
-    vae_approx_filename = os.path.join(path_vae_approx, 'xlvaeapp.pth' if is_sdxl else 'vaeapp_sd15.pth')
-
-    if vae_approx_filename in VAE_approx_models:
-        VAE_approx_model = VAE_approx_models[vae_approx_filename]
-    else:
-        sd = torch.load(vae_approx_filename, map_location='cpu')
-        VAE_approx_model = VAEApprox()
-        VAE_approx_model.load_state_dict(sd)
-        del sd
-        VAE_approx_model.eval()
-
-        if ldm_patched.modules.model_management.should_use_fp16():
-            VAE_approx_model.half()
-            VAE_approx_model.current_type = torch.float16
-        else:
-            VAE_approx_model.float()
-            VAE_approx_model.current_type = torch.float32
-
-        VAE_approx_model.to(ldm_patched.modules.model_management.get_torch_device())
-        VAE_approx_models[vae_approx_filename] = VAE_approx_model
-
-    @torch.no_grad()
-    @torch.inference_mode()
-    def preview_function(x0, step, total_steps):
-        with torch.no_grad():
-            x_sample = x0.to(VAE_approx_model.current_type)
-            x_sample = VAE_approx_model(x_sample) * 127.5 + 127.5
-            x_sample = einops.rearrange(x_sample, 'b c h w -> b h w c')[0]
-            x_sample = x_sample.cpu().numpy().clip(0, 255).astype(np.uint8)
-            return x_sample
-
-    return preview_function
-
-
-@torch.no_grad()
-@torch.inference_mode()
 def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sampler_name='dpmpp_2m_sde_gpu',
              scheduler='karras', denoise=1.0, disable_noise=False, start_step=None, last_step=None,
              force_full_denoise=False, callback_function=None, refiner=None, refiner_switch=-1,
@@ -282,22 +241,6 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
     noise_mask = None
     if "noise_mask" in latent:
         noise_mask = latent["noise_mask"]
-
-    previewer = get_previewer(model)
-
-    if previewer_start is None:
-        previewer_start = 0
-
-    if previewer_end is None:
-        previewer_end = steps
-
-    def callback(step, x0, x, total_steps):
-        ldm_patched.modules.model_management.throw_exception_if_processing_interrupted()
-        y = None
-        if previewer is not None and not disable_preview:
-            y = previewer(x0, previewer_start + step, previewer_end)
-        if callback_function is not None:
-            callback_function(previewer_start + step, x0, x, previewer_end, y)
 
     disable_pbar = False
     modules.sample_hijack.current_refiner = refiner

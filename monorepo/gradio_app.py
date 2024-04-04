@@ -3,6 +3,8 @@ import copy
 import random
 import torch
 import core
+import ldm_patched.modules.model_management
+import inpaint_worker
 import numpy as np
 import gradio as gr
 import gradio_hijack as grh
