@@ -2,18 +2,45 @@ import os
 import copy
 import random
 import torch
+from urllib.parse import urlparse
+from typing import Optional
+import gradio as gr
+
 import core
 import ldm_patched.modules.model_management
 import inpaint_worker
 import numpy as np
-import gradio as gr
 import gradio_hijack as grh
-from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str
+from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str, resample_image
 from expansion import safe_str, FooocusExpansion
 
 
 MODEL_DIR = ".cache"
 os.makedirs(MODEL_DIR, exist_ok=True)
+
+
+def load_file_from_url(
+        url: str,
+        *,
+        model_dir: str,
+        progress: bool = True,
+        file_name: Optional[str] = None,
+) -> str:
+    """Download a file from `url` into `model_dir`, using the file present if possible.
+
+    Returns the path to the downloaded file.
+    """
+    os.makedirs(model_dir, exist_ok=True)
+    if not file_name:
+        parts = urlparse(url)
+        file_name = os.path.basename(parts.path)
+    cached_file = os.path.abspath(os.path.join(model_dir, file_name))
+    if not os.path.exists(cached_file):
+        print(f'Downloading: "{url}" to {cached_file}\n')
+        from torch.hub import download_url_to_file
+        download_url_to_file(url, cached_file, progress=progress)
+    return cached_file
+
 
 
 @torch.no_grad()
@@ -88,7 +115,7 @@ def load_model(filename, base_model_additional_loras):
 
 
 # Functions
-def load_inpaint_images(inpaint_input_image, inpaint_erode_or_dilate, refiner_model_name="None"):
+def load_inpaint_images(inpaint_input_image, inpaint_mask_image_upload, inpaint_erode_or_dilate, refiner_model_name="None"):
     inpaint_image = inpaint_input_image['image']
     inpaint_mask = inpaint_input_image['mask'][:, :, 0]
 
@@ -230,12 +257,13 @@ def expand_prompt(
         else:
             progressbar(async_task, 10, f'Encoding negative #{i + 1} ...')
             t['uc'] = pipeline.clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
-
+    return t
 
 
 
 def inpaint_image(
     inpaint_input_image,
+    inpaint_mask_image,
     inpaint_erode_or_dilate,
     steps,
     refiner_switch,
@@ -245,13 +273,17 @@ def inpaint_image(
     height=1024,
     sampler_name="dpmpp_2m_sde_gpu",
     scheduler_name="karras",
-    style_selections=[]
+    style_selections=[],
+    num_images=1
 ):
     inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
-        base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_erode_or_dilate, refiner_model_name="None")
+        base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, refiner_model_name="None")
     switch = int(round(steps * refiner_switch))
     print(f'[Parameters] Sampler = {sampler_name} - {scheduler_name}')
     print(f'[Parameters] Steps = {steps} - {switch}')
+
+    task = expand_prompt(prompt, negative_prompt, num_images, style_selections=style_selections)
+    print(task)
 
 
 
@@ -273,8 +305,7 @@ def trigger_inpaint(
     negative_prompt="",
     num_images=2,
 ):
-    inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
-        base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_mask_image)
+    _ = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images)
     return []
 
 
@@ -283,7 +314,7 @@ with gr.Blocks() as demo:
 
     with gr.Row():
         inpaint_input_image = grh.Image(label='Drag inpaint or outpaint image to here', source='upload', type='numpy', tool='sketch', height=500, brush_color="#FFFFFF", elem_id='inpaint_canvas')
-        inpaint_mask_image = grh.Image(label='Mask Upload', source='upload', type='numpy', height=500, visible=False)
+        inpaint_mask_image = grh.Image(label='Mask Upload', source='upload', type='numpy', height=500, visible=True)
     with gr.Row():
         steps_count = gr.Slider(minimum=1, maximum=200, value=30, step=1, label="Steps")
         refiner_switch = gr.Slider(label='Refiner Switch At', minimum=0.1, maximum=1.0, step=0.0001,
@@ -332,7 +363,7 @@ with gr.Blocks() as demo:
                                                     elem_classes=['style_selections'])
     with gr.Row():
         prompt = gr.Textbox(show_label=False, placeholder="Type prompt here or paste parameters.", elem_id='positive_prompt',
-                                        container=False, autofocus=True, elem_classes='type_row', lines=1024)
+                                        container=False, autofocus=True, elem_classes='type_row', lines=2, value="blue, beautiful")
         negative_prompt = gr.Textbox(label='Negative Prompt', show_label=True, placeholder="Type prompt here.",
                                              info='Describing what you do not want to see.', lines=2,
                                              elem_id='negative_prompt')
@@ -344,7 +375,7 @@ with gr.Blocks() as demo:
                                  elem_classes=['resizable_area', 'main_view', 'final_gallery', 'image_gallery'],
                                  elem_id='final_gallery')
 
-    generate.click(trigger_inpaint, [inpaint_input_image,  inpaint_mask_image, steps_count, refiner_switch, guidance_scale, sharpness, inpaint_strength, inpaint_respective_field, inpaint_erode_or_dilate, adaptive_cfg, sampler_name, scheduler_name, style_selections, prompt, negative_prompt, num_images], gallery)
+    generate.click(trigger_inpaint, [inpaint_input_image, inpaint_mask_image, steps_count, refiner_switch, guidance_scale, sharpness, inpaint_strength, inpaint_respective_field, inpaint_erode_or_dilate, adaptive_cfg, sampler_name, scheduler_name, style_selections, prompt, negative_prompt, num_images], gallery)
 
 
-demo.launch()
+demo.launch(debug=True)
