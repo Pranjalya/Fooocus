@@ -15,6 +15,7 @@ from PIL import Image
 
 LANCZOS = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
 HASH_SHA256_LENGTH = 10
+styles = {}
 
 
 def normalize_key(k):
