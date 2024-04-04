@@ -8,7 +8,7 @@ import ldm_patched.modules.model_detection
 import ldm_patched.modules.model_patcher
 import ldm_patched.modules.utils
 import ldm_patched.modules.controlnet
-import modules.sample_hijack
+import sample_hijack
 import ldm_patched.modules.samplers
 import ldm_patched.modules.latent_formats
 
@@ -20,9 +20,9 @@ from ldm_patched.modules.sample import prepare_mask
 from modules.lora import match_lora
 from modules.util import get_file_from_folder_list
 from ldm_patched.modules.lora import model_lora_keys_unet, model_lora_keys_clip
-from modules.config import path_embeddings
 from ldm_patched.contrib.external_model_advanced import ModelSamplingDiscrete
 
+path_embeddings = "../.cache"
 
 opEmptyLatentImage = EmptyLatentImage()
 opVAEDecode = VAEDecode()

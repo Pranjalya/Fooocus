@@ -1,16 +1,16 @@
-import modules.core as core
+import core
 import os
 import torch
-import modules.patch
+
 import modules.config
 import ldm_patched.modules.model_management
 import ldm_patched.modules.latent_formats
-import modules.inpaint_worker
-import extras.vae_interpose as vae_interpose
-from extras.expansion import FooocusExpansion
-
+import inpaint_worker
+# import extras.vae_interpose as vae_interpose
+from expansion import FooocusExpansion
+import patch
 from ldm_patched.modules.model_base import SDXL, SDXLRefiner
-from modules.sample_hijack import clip_separate
+from sample_hijack import clip_separate
 from modules.util import get_file_from_folder_list, get_enabled_loras
 
 
@@ -352,7 +352,7 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
     sigma_max = float(sigma_max.cpu().numpy())
     print(f'[Sampler] sigma_min = {sigma_min}, sigma_max = {sigma_max}')
 
-    modules.patch.BrownianTreeNoiseSamplerPatched.global_init(
+    patch.BrownianTreeNoiseSamplerPatched.global_init(
         initial_latent['samples'].to(ldm_patched.modules.model_management.get_torch_device()),
         sigma_min, sigma_max, seed=image_seed, cpu=False)
 
