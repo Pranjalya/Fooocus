@@ -52,7 +52,11 @@ def prepare_text_encoder(final_clip, final_expansion, async_call=True):
 @torch.no_grad()
 @torch.inference_mode()
 def clip_encode_single(clip, text, verbose=False):
-    cached = clip.fcs_cond_cache.get(text, None)
+    try:
+        cached = clip.fcs_cond_cache.get(text, None)
+    except:
+        cached = None
+        clip.fcs_cond_cache = {}
     if cached is not None:
         if verbose:
             print(f'[CLIP Cached] {text}')
@@ -212,7 +216,8 @@ def expand_prompt(
     base_model_additional_loras=[],
     use_synthetic_refiner=True,
     seed=123456,
-    style_selections=[]
+    style_selections=[],
+    cfg_scale=7.0
 ):
 
     fooocus_expansion = "Fooocus V2"
@@ -334,7 +339,8 @@ def inpaint_image(
     sampler_name="dpmpp_2m_sde_gpu",
     scheduler_name="karras",
     style_selections=[],
-    num_images=1
+    num_images=1,
+    guidance_scale=7.0
 ):
     download_models()
     inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
@@ -343,8 +349,9 @@ def inpaint_image(
     print(f'[Parameters] Sampler = {sampler_name} - {scheduler_name}')
     print(f'[Parameters] Steps = {steps} - {switch}')
 
-    task = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", style_selections=style_selections)
+    task = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", style_selections=style_selections, cfg_scale=guidance_scale)
     print(task)
+    return None
 
 
 
@@ -366,7 +373,7 @@ def trigger_inpaint(
     negative_prompt="",
     num_images=2,
 ):
-    _ = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images)
+    _ = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale)
     return []
 
 
