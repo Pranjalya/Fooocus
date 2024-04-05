@@ -322,7 +322,7 @@ def expand_prompt(
         else:
             print (f'Encoding negative #{i + 1} ...')
             t['uc'] = clip_encode(final_clip, texts=t['negative'], pool_top_k=t['negative_top_k'])
-    return t
+    return tasks, final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion
 
 
 
@@ -340,7 +340,8 @@ def inpaint_image(
     scheduler_name="karras",
     style_selections=[],
     num_images=1,
-    guidance_scale=7.0
+    guidance_scale=7.0,
+    inpaint_strength=1.0
 ):
     download_models()
     inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
@@ -349,8 +350,89 @@ def inpaint_image(
     print(f'[Parameters] Sampler = {sampler_name} - {scheduler_name}')
     print(f'[Parameters] Steps = {steps} - {switch}')
 
-    task = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", style_selections=style_selections, cfg_scale=guidance_scale)
-    print(task)
+    tasks, final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", style_selections=style_selections, cfg_scale=guidance_scale)
+    print(tasks)
+
+    denoising_strength = inpaint_strength
+    inpaint_respective_field = 0
+
+    inpaint_worker.current_task = inpaint_worker.InpaintWorker(
+        image=inpaint_image,
+        mask=inpaint_mask,
+        use_fill=denoising_strength > 0.99,
+        k=inpaint_respective_field
+    )
+
+    inpaint_pixel_fill = core.numpy_to_pytorch(inpaint_worker.current_task.interested_fill)
+    inpaint_pixel_image = core.numpy_to_pytorch(inpaint_worker.current_task.interested_image)
+    inpaint_pixel_mask = core.numpy_to_pytorch(inpaint_worker.current_task.interested_mask)
+
+
+    print('VAE Inpaint encoding ...')
+
+    candidate_vae, candidate_vae_swap = pipeline.get_candidate_vae(
+        steps=steps,
+        switch=switch,
+        denoise=denoising_strength,
+        refiner_swap_method=refiner_swap_method
+    )
+
+    print("VAE Candidate:", candidate_vae, candidate_vae_swap)
+
+    latent_inpaint, latent_mask = core.encode_vae_inpaint(
+        mask=inpaint_pixel_mask,
+        vae=candidate_vae,
+        pixels=inpaint_pixel_image)
+
+    latent_swap = None
+    if candidate_vae_swap is not None:
+        progressbar(async_task, 13, 'VAE SD15 encoding ...')
+        latent_swap = core.encode_vae(
+            vae=candidate_vae_swap,
+            pixels=inpaint_pixel_fill)['samples']
+
+    progressbar(async_task, 13, 'VAE encoding ...')
+    latent_fill = core.encode_vae(
+        vae=candidate_vae,
+        pixels=inpaint_pixel_fill)['samples']
+
+    inpaint_worker.current_task.load_latent(
+        latent_fill=latent_fill, latent_mask=latent_mask, latent_swap=latent_swap)
+
+    if inpaint_parameterized:
+        pipeline.final_unet = inpaint_worker.current_task.patch(
+            inpaint_head_model_path=inpaint_head_model_path,
+            inpaint_latent=latent_inpaint,
+            inpaint_latent_mask=latent_mask,
+            model=pipeline.final_unet
+        )
+
+    if not inpaint_disable_initial_latent:
+        initial_latent = {'samples': latent_fill}
+
+    B, C, H, W = latent_fill.shape
+    height, width = H * 8, W * 8
+    final_height, final_width = inpaint_worker.current_task.image.shape[:2]
+    print(f'Final resolution is {str((final_height, final_width))}, latent is {str((height, width))}.')
+
+    all_steps = steps * image_number
+
+    print(f'[Parameters] Denoising Strength = {denoising_strength}')
+
+    if isinstance(initial_latent, dict) and 'samples' in initial_latent:
+        log_shape = initial_latent['samples'].shape
+    else:
+        log_shape = f'Image Space {(height, width)}'
+
+    print(f'[Parameters] Initial Latent shape: {log_shape}')
+
+    preparation_time = time.perf_counter() - execution_start_time
+    print(f'Preparation time: {preparation_time:.2f} seconds')
+
+    final_sampler_name = sampler_name
+    final_scheduler_name = scheduler_name
+
+
     return None
 
 
@@ -373,7 +455,7 @@ def trigger_inpaint(
     negative_prompt="",
     num_images=2,
 ):
-    _ = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale)
+    _ = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale, inpaint_strength=inpaint_strength)
     return []
 
 
