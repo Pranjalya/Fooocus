@@ -35,7 +35,7 @@ def remove_pattern(x, pattern):
 
 class FooocusExpansion:
     def __init__(self):
-        path_fooocus_expansion = "../.cache/fooocus_expansion"
+        path_fooocus_expansion = "./fooocus_expansion"
         self.tokenizer = AutoTokenizer.from_pretrained(path_fooocus_expansion)
 
         positive_words = open(os.path.join(path_fooocus_expansion, 'positive.txt'),
