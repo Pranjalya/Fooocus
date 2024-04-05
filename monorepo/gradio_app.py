@@ -309,14 +309,14 @@ def expand_prompt(
 
     for i, t in enumerate(tasks):
         print(f'Encoding positive #{i + 1} ...')
-        t['c'] = clip_encode(texts=t['positive'], pool_top_k=t['positive_top_k'])
+        t['c'] = clip_encode(final_clip, texts=t['positive'], pool_top_k=t['positive_top_k'])
 
     for i, t in enumerate(tasks):
         if abs(float(cfg_scale) - 1.0) < 1e-4:
             t['uc'] = clone_cond(t['c'])
         else:
-            progressbar(async_task, 10, f'Encoding negative #{i + 1} ...')
-            t['uc'] = clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
+            print (f'Encoding negative #{i + 1} ...')
+            t['uc'] = clip_encode(final_clip, texts=t['negative'], pool_top_k=t['negative_top_k'])
     return t
 
 
