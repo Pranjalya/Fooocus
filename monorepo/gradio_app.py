@@ -336,13 +336,14 @@ def inpaint_image(
     style_selections=[],
     num_images=1
 ):
+    download_models()
     inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
         base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, refiner_model_name="None")
     switch = int(round(steps * refiner_switch))
     print(f'[Parameters] Sampler = {sampler_name} - {scheduler_name}')
     print(f'[Parameters] Steps = {steps} - {switch}')
 
-    task = expand_prompt(prompt, negative_prompt, num_images, style_selections=style_selections)
+    task = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", style_selections=style_selections)
     print(task)
 
 
