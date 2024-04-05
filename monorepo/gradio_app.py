@@ -49,6 +49,63 @@ def prepare_text_encoder(final_clip, final_expansion, async_call=True):
     ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
 
 
+@torch.no_grad()
+@torch.inference_mode()
+def clip_encode_single(clip, text, verbose=False):
+    cached = clip.fcs_cond_cache.get(text, None)
+    if cached is not None:
+        if verbose:
+            print(f'[CLIP Cached] {text}')
+        return cached
+    tokens = clip.tokenize(text)
+    result = clip.encode_from_tokens(tokens, return_pooled=True)
+    clip.fcs_cond_cache[text] = result
+    if verbose:
+        print(f'[CLIP Encoded] {text}')
+    return result
+
+
+@torch.no_grad()
+@torch.inference_mode()
+def clip_encode(final_clip, texts, pool_top_k=1):
+    if final_clip is None:
+        return None
+    if not isinstance(texts, list):
+        return None
+    if len(texts) == 0:
+        return None
+
+    cond_list = []
+    pooled_acc = 0
+
+    for i, text in enumerate(texts):
+        cond, pooled = clip_encode_single(final_clip, text)
+        cond_list.append(cond)
+        if i < pool_top_k:
+            pooled_acc += pooled
+
+    return [[torch.cat(cond_list, dim=1), {"pooled_output": pooled_acc}]]
+
+
+@torch.no_grad()
+@torch.inference_mode()
+def clone_cond(conds):
+    results = []
+
+    for c, p in conds:
+        p = p["pooled_output"]
+
+        if isinstance(c, torch.Tensor):
+            c = c.clone()
+
+        if isinstance(p, torch.Tensor):
+            p = p.clone()
+
+        results.append([c, {"pooled_output": p}])
+
+    return results
+
+
 def downloading_inpaint_models():
     load_file_from_url(
             url='https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/fooocus_inpaint_head.pth',
@@ -111,7 +168,7 @@ def load_model(filename, base_model_additional_loras):
         final_expansion = FooocusExpansion()
 
     prepare_text_encoder(final_clip, final_expansion, async_call=True)
-    return final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip
+    return final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion
 
 
 # Functions
@@ -187,6 +244,8 @@ def expand_prompt(
     print("base_model_additional_loras", base_model_additional_loras)
     print("use_synthetic_refiner", use_synthetic_refiner)
 
+    final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion = load_model(base_model_name, base_model_additional_loras)
+
     # pipeline.refresh_everything(refiner_model_name=refiner_model_name, base_model_name=base_model_name,
     #                             loras=[], base_model_additional_loras=base_model_additional_loras,
     #                             use_synthetic_refiner=use_synthetic_refiner)
@@ -237,25 +296,27 @@ def expand_prompt(
             log_positive_prompt='\n'.join([task_prompt] + task_extra_positive_prompts),
             log_negative_prompt='\n'.join([task_negative_prompt] + task_extra_negative_prompts),
         ))
+    
+    print(tasks)
 
     if use_expansion:
         for i, t in enumerate(tasks):
             print(f'Preparing Fooocus text #{i + 1} ...')
-            expansion = pipeline.final_expansion(t['task_prompt'], t['task_seed'])
+            expansion = final_expansion(t['task_prompt'], t['task_seed'])
             print(f'[Prompt Expansion] {expansion}')
             t['expansion'] = expansion
             t['positive'] = copy.deepcopy(t['positive']) + [expansion]  # Deep copy.
 
     for i, t in enumerate(tasks):
-        progressbar(async_task, 7, f'Encoding positive #{i + 1} ...')
-        t['c'] = pipeline.clip_encode(texts=t['positive'], pool_top_k=t['positive_top_k'])
+        print(f'Encoding positive #{i + 1} ...')
+        t['c'] = clip_encode(texts=t['positive'], pool_top_k=t['positive_top_k'])
 
     for i, t in enumerate(tasks):
         if abs(float(cfg_scale) - 1.0) < 1e-4:
-            t['uc'] = pipeline.clone_cond(t['c'])
+            t['uc'] = clone_cond(t['c'])
         else:
             progressbar(async_task, 10, f'Encoding negative #{i + 1} ...')
-            t['uc'] = pipeline.clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
+            t['uc'] = clip_encode(texts=t['negative'], pool_top_k=t['negative_top_k'])
     return t
 
 
