@@ -13,7 +13,7 @@ import numpy as np
 import gradio_hijack as grh
 from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str, resample_image
 from expansion import safe_str, FooocusExpansion
-
+from pipeline_utils import *
 
 MODEL_DIR = ".cache"
 os.makedirs(MODEL_DIR, exist_ok=True)
@@ -41,73 +41,6 @@ def load_file_from_url(
         download_url_to_file(url, cached_file, progress=progress)
     return cached_file
 
-
-
-@torch.no_grad()
-@torch.inference_mode()
-def prepare_text_encoder(final_clip, final_expansion, async_call=True):
-    ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
-
-
-@torch.no_grad()
-@torch.inference_mode()
-def clip_encode_single(clip, text, verbose=False):
-    try:
-        cached = clip.fcs_cond_cache.get(text, None)
-    except:
-        cached = None
-        clip.fcs_cond_cache = {}
-    if cached is not None:
-        if verbose:
-            print(f'[CLIP Cached] {text}')
-        return cached
-    tokens = clip.tokenize(text)
-    result = clip.encode_from_tokens(tokens, return_pooled=True)
-    clip.fcs_cond_cache[text] = result
-    if verbose:
-        print(f'[CLIP Encoded] {text}')
-    return result
-
-
-@torch.no_grad()
-@torch.inference_mode()
-def clip_encode(final_clip, texts, pool_top_k=1):
-    if final_clip is None:
-        return None
-    if not isinstance(texts, list):
-        return None
-    if len(texts) == 0:
-        return None
-
-    cond_list = []
-    pooled_acc = 0
-
-    for i, text in enumerate(texts):
-        cond, pooled = clip_encode_single(final_clip, text)
-        cond_list.append(cond)
-        if i < pool_top_k:
-            pooled_acc += pooled
-
-    return [[torch.cat(cond_list, dim=1), {"pooled_output": pooled_acc}]]
-
-
-@torch.no_grad()
-@torch.inference_mode()
-def clone_cond(conds):
-    results = []
-
-    for c, p in conds:
-        p = p["pooled_output"]
-
-        if isinstance(c, torch.Tensor):
-            c = c.clone()
-
-        if isinstance(p, torch.Tensor):
-            p = p.clone()
-
-        results.append([c, {"pooled_output": p}])
-
-    return results
 
 
 def downloading_inpaint_models():
@@ -370,11 +303,16 @@ def inpaint_image(
 
     print('VAE Inpaint encoding ...')
 
-    candidate_vae, candidate_vae_swap = pipeline.get_candidate_vae(
+    refiner_swap_method = "joint"
+
+    candidate_vae, candidate_vae_swap = get_candidate_vae(
         steps=steps,
         switch=switch,
         denoise=denoising_strength,
-        refiner_swap_method=refiner_swap_method
+        refiner_swap_method=refiner_swap_method,
+        final_refiner_vae=final_refiner_vae,
+        final_refiner_unet=final_refiner_unet,
+        final_vae=final_vae
     )
 
     print("VAE Candidate:", candidate_vae, candidate_vae_swap)
@@ -386,12 +324,12 @@ def inpaint_image(
 
     latent_swap = None
     if candidate_vae_swap is not None:
-        progressbar(async_task, 13, 'VAE SD15 encoding ...')
+        print('VAE SD15 encoding ...')
         latent_swap = core.encode_vae(
             vae=candidate_vae_swap,
             pixels=inpaint_pixel_fill)['samples']
 
-    progressbar(async_task, 13, 'VAE encoding ...')
+    print('VAE encoding ...')
     latent_fill = core.encode_vae(
         vae=candidate_vae,
         pixels=inpaint_pixel_fill)['samples']
@@ -399,14 +337,17 @@ def inpaint_image(
     inpaint_worker.current_task.load_latent(
         latent_fill=latent_fill, latent_mask=latent_mask, latent_swap=latent_swap)
 
+    inpaint_parameterized = True
     if inpaint_parameterized:
-        pipeline.final_unet = inpaint_worker.current_task.patch(
+        final_unet = inpaint_worker.current_task.patch(
             inpaint_head_model_path=inpaint_head_model_path,
             inpaint_latent=latent_inpaint,
             inpaint_latent_mask=latent_mask,
-            model=pipeline.final_unet
+            model=final_unet
         )
 
+    inpaint_disable_initial_latent = True
+    initial_latent = None
     if not inpaint_disable_initial_latent:
         initial_latent = {'samples': latent_fill}
 
@@ -415,7 +356,7 @@ def inpaint_image(
     final_height, final_width = inpaint_worker.current_task.image.shape[:2]
     print(f'Final resolution is {str((final_height, final_width))}, latent is {str((height, width))}.')
 
-    all_steps = steps * image_number
+    all_steps = steps * num_images
 
     print(f'[Parameters] Denoising Strength = {denoising_strength}')
 
@@ -432,8 +373,35 @@ def inpaint_image(
     final_sampler_name = sampler_name
     final_scheduler_name = scheduler_name
 
+    output_images = []
 
-    return None
+    for current_task_id, task in enumerate(tasks):
+        positive_cond, negative_cond = task['c'], task['uc']
+        imgs = process_diffusion(
+                positive_cond=positive_cond,
+                negative_cond=negative_cond,
+                steps=steps,
+                switch=switch,
+                width=width,
+                height=height,
+                image_seed=task['task_seed'],
+                # callback=callback,
+                sampler_name=final_sampler_name,
+                scheduler_name=final_scheduler_name,
+                latent=initial_latent,
+                denoise=denoising_strength,
+                tiled=False,
+                cfg_scale=cfg_scale,
+                refiner_swap_method=refiner_swap_method,
+                disable_preview=True
+            )
+        del task['c'], task['uc'], positive_cond, negative_cond  # Save memory
+
+        if inpaint_worker.current_task is not None:
+            imgs = [inpaint_worker.current_task.post_process(x) for x in imgs]
+        output_images.extend(imgs)
+
+    return output_images
 
 
 
