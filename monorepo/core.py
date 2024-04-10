@@ -240,9 +240,9 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
         noise_mask = latent["noise_mask"]
 
     disable_pbar = False
-    modules.sample_hijack.current_refiner = refiner
-    modules.sample_hijack.refiner_switch_step = refiner_switch
-    ldm_patched.modules.samplers.sample = modules.sample_hijack.sample_hacked
+    sample_hijack.current_refiner = refiner
+    sample_hijack.refiner_switch_step = refiner_switch
+    ldm_patched.modules.samplers.sample = sample_hijack.sample_hacked
 
     try:
         samples = ldm_patched.modules.sample.sample(model,
@@ -258,7 +258,7 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
         out = latent.copy()
         out["samples"] = samples
     finally:
-        modules.sample_hijack.current_refiner = None
+        sample_hijack.current_refiner = None
 
     return out
 
