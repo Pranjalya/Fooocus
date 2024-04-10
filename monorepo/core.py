@@ -252,7 +252,7 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
                                                     start_step=start_step,
                                                     last_step=last_step,
                                                     force_full_denoise=force_full_denoise, noise_mask=noise_mask,
-                                                    callback=callback,
+                                                    callback=callback_function,
                                                     disable_pbar=disable_pbar, seed=seed, sigmas=sigmas)
 
         out = latent.copy()
