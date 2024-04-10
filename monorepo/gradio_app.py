@@ -411,10 +411,10 @@ def inpaint_image(
         
         img_paths = []
         for x in imgs:
-            date_string, local_temp_filename, only_name = generate_temp_filename(folder="./outputs/", extension=None)
+            date_string, local_temp_filename, only_name = generate_temp_filename(folder="./outputs/", extension="PNG")
             print(date_string, local_temp_filename, only_name)
             os.makedirs(os.path.dirname(local_temp_filename), exist_ok=True)
-            image = Image.fromarray(img)
+            image = Image.fromarray(x)
             image.save(local_temp_filename)
             img_paths.append(local_temp_filename)
 
@@ -422,7 +422,7 @@ def inpaint_image(
         execution_time = time.perf_counter() - execution_start_time
         print(f'Generating and saving time: {execution_time:.2f} seconds')
         
-        output_images.extend(imgs)
+        output_images.extend(img_paths)
 
     return output_images
 
