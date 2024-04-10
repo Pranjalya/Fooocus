@@ -12,7 +12,7 @@ import ldm_patched.modules.model_management
 import inpaint_worker
 import numpy as np
 import gradio_hijack as grh
-from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str, resample_image
+from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str, resample_image, generate_temp_filename
 from expansion import safe_str, FooocusExpansion
 from pipeline_utils import *
 
@@ -403,9 +403,21 @@ def inpaint_image(
             )
         del task['c'], task['uc'], positive_cond, negative_cond  # Save memory
 
+        print("Current task", inpaint_worker.current_task)
+
         if inpaint_worker.current_task is not None:
             imgs = [inpaint_worker.current_task.post_process(x) for x in imgs]
         
+        img_paths = []
+        for x in imgs:
+            date_string, local_temp_filename, only_name = generate_temp_filename(folder=path_outputs, extension=output_format)
+            print(date_string, local_temp_filename, only_name)
+            os.makedirs(os.path.dirname(local_temp_filename), exist_ok=True)
+            image = Image.fromarray(img)
+            image.save(local_temp_filename)
+            img_paths.append(local_temp_filename)
+
+
         execution_time = time.perf_counter() - execution_start_time
         print(f'Generating and saving time: {execution_time:.2f} seconds')
         
