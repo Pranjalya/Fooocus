@@ -72,6 +72,36 @@ def clone_cond(conds):
 
 @torch.no_grad()
 @torch.inference_mode()
+def calculate_sigmas_all(sampler, model, scheduler, steps):
+    from ldm_patched.modules.samplers import calculate_sigmas_scheduler
+
+    discard_penultimate_sigma = False
+    if sampler in ['dpm_2', 'dpm_2_ancestral']:
+        steps += 1
+        discard_penultimate_sigma = True
+
+    sigmas = calculate_sigmas_scheduler(model, scheduler, steps)
+
+    if discard_penultimate_sigma:
+        sigmas = torch.cat([sigmas[:-2], sigmas[-1:]])
+    return sigmas
+
+
+@torch.no_grad()
+@torch.inference_mode()
+def calculate_sigmas(sampler, model, scheduler, steps, denoise):
+    if denoise is None or denoise > 0.9999:
+        sigmas = calculate_sigmas_all(sampler, model, scheduler, steps)
+    else:
+        new_steps = int(steps / denoise)
+        sigmas = calculate_sigmas_all(sampler, model, scheduler, new_steps)
+        sigmas = sigmas[-(steps + 1):]
+    return sigmas
+
+
+
+@torch.no_grad()
+@torch.inference_mode()
 def get_candidate_vae(steps, switch, denoise=1.0, refiner_swap_method='joint', final_refiner_vae=None, final_refiner_unet=None, final_vae=None):
     assert refiner_swap_method in ['joint', 'separate', 'vae']
 
