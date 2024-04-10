@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from typing import Optional
 import gradio as gr
 
+from PIL import Image
 import core
 import ldm_patched.modules.model_management
 import inpaint_worker
@@ -410,7 +411,7 @@ def inpaint_image(
         
         img_paths = []
         for x in imgs:
-            date_string, local_temp_filename, only_name = generate_temp_filename(folder=path_outputs, extension=output_format)
+            date_string, local_temp_filename, only_name = generate_temp_filename(folder="./outputs/", extension=None)
             print(date_string, local_temp_filename, only_name)
             os.makedirs(os.path.dirname(local_temp_filename), exist_ok=True)
             image = Image.fromarray(img)
