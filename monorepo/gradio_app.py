@@ -1,5 +1,6 @@
 import os
 import copy
+import time
 import random
 import torch
 from urllib.parse import urlparse
@@ -234,8 +235,6 @@ def expand_prompt(
             log_positive_prompt='\n'.join([task_prompt] + task_extra_positive_prompts),
             log_negative_prompt='\n'.join([task_negative_prompt] + task_extra_negative_prompts),
         ))
-    
-    print(tasks)
 
     if use_expansion:
         for i, t in enumerate(tasks):
