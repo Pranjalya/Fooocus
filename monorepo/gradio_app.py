@@ -276,6 +276,7 @@ def inpaint_image(
     inpaint_strength=1.0
 ):
     download_models()
+    execution_start_time = time.perf_counter()
     inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
         base_model_additional_loras, use_synthetic_refiner, refiner_switch = load_inpaint_images(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, refiner_model_name="None")
     switch = int(round(steps * refiner_switch))
@@ -375,6 +376,7 @@ def inpaint_image(
     output_images = []
 
     for current_task_id, task in enumerate(tasks):
+        execution_start_time = time.perf_counter()
         positive_cond, negative_cond = task['c'], task['uc']
         imgs = process_diffusion(
                 positive_cond=positive_cond,
@@ -384,20 +386,29 @@ def inpaint_image(
                 width=width,
                 height=height,
                 image_seed=task['task_seed'],
-                # callback=callback,
+                callback=None,
                 sampler_name=final_sampler_name,
                 scheduler_name=final_scheduler_name,
                 latent=initial_latent,
                 denoise=denoising_strength,
                 tiled=False,
-                cfg_scale=cfg_scale,
+                cfg_scale=float(guidance_scale),
                 refiner_swap_method=refiner_swap_method,
-                disable_preview=True
+                disable_preview=True,
+                final_unet=final_unet, 
+                final_vae=final_vae, 
+                final_refiner_unet=final_refiner_unet, 
+                final_refiner_vae=final_refiner_vae, 
+                final_clip=final_clip
             )
         del task['c'], task['uc'], positive_cond, negative_cond  # Save memory
 
         if inpaint_worker.current_task is not None:
             imgs = [inpaint_worker.current_task.post_process(x) for x in imgs]
+        
+        execution_time = time.perf_counter() - execution_start_time
+        print(f'Generating and saving time: {execution_time:.2f} seconds')
+        
         output_images.extend(imgs)
 
     return output_images
