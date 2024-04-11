@@ -331,6 +331,7 @@ class ModelPatcher:
                 weight += ((torch.mm(b2, b1) + torch.mm(torch.mm(weight.flatten(start_dim=1), a2), a1)) * alpha).reshape(weight.shape).type(weight.dtype)
             else:
                 print("patch type not recognized", patch_type, key)
+                raise Exception(v)
 
         return weight
 
