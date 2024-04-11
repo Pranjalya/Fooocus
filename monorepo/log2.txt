@@ -19,7 +19,7 @@ loaded straight to GPU
 Requested to load SDXL
 Loading 1 new model
 Base model loaded: .cache/sd_xl_turbo_1.0_fp16.safetensors
-Request to load LoRAs [] for model [.cache/sd_xl_turbo_1.0_fp16.safetensors].
+Request to load LoRAs [('.cache/inpaint_v26.fooocus.patch', 1.0)] for model [.cache/sd_xl_turbo_1.0_fp16.safetensors].
 Fooocus V2 Expansion: Vocab with 642 words.
 Fooocus Expansion engine loaded for cuda:0, use_fp16 = True.
 Requested to load SDXLClipModel
