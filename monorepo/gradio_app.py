@@ -445,8 +445,8 @@ def trigger_inpaint(
     negative_prompt="",
     num_images=2,
 ):
-    _ = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale, inpaint_strength=inpaint_strength)
-    return []
+    output_images = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale, inpaint_strength=inpaint_strength)
+    return output_images
 
 
 with gr.Blocks() as demo:
@@ -518,4 +518,4 @@ with gr.Blocks() as demo:
     generate.click(trigger_inpaint, [inpaint_input_image, inpaint_mask_image, steps_count, refiner_switch, guidance_scale, sharpness, inpaint_strength, inpaint_respective_field, inpaint_erode_or_dilate, adaptive_cfg, sampler_name, scheduler_name, style_selections, prompt, negative_prompt, num_images], gallery)
 
 
-demo.launch(debug=True)
+demo.queue().launch(debug=True)
