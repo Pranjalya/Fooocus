@@ -1,6 +1,7 @@
 def match_lora(lora, to_load):
     patch_dict = {}
     loaded_keys = set()
+    print("MATCH LORA", lora, to_load)
     for x in to_load:
         real_load_key = to_load[x]
         if real_load_key in lora:
