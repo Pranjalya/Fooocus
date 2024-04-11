@@ -5,6 +5,8 @@ import ldm_patched.modules.utils
 import torch
 import sys
 
+args.always_high_vram = True
+
 class VRAMState(Enum):
     DISABLED = 0    #No vram present: no need to move models to vram
     NO_VRAM = 1     #Very low vram: enable all the options to save vram
