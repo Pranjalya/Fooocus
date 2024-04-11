@@ -1,0 +1,77 @@
+[Inpaint] Current inpaint model is .cache/inpaint_v26.fooocus.patch
+[Parameters] Sampler = dpmpp_2m_sde_gpu - karras
+[Parameters] Steps = 30 - 24
+Loading models ...
+Models
+refiner_model_name None
+base_model_name .cache/sd_xl_turbo_1.0_fp16.safetensors
+loras []
+base_model_additional_loras []
+use_synthetic_refiner True
+model_type EPS
+UNet ADM Dimension 2816
+Using pytorch attention in VAE
+Working with z of shape (1, 4, 32, 32) = 4096 dimensions.
+Using pytorch attention in VAE
+extra {'cond_stage_model.clip_l.logit_scale', 'cond_stage_model.clip_l.text_projection'}
+left over keys: dict_keys(['denoiser.sigmas'])
+loaded straight to GPU
+Requested to load SDXL
+Loading 1 new model
+Base model loaded: .cache/sd_xl_turbo_1.0_fp16.safetensors
+Request to load LoRAs [] for model [.cache/sd_xl_turbo_1.0_fp16.safetensors].
+Fooocus V2 Expansion: Vocab with 642 words.
+Fooocus Expansion engine loaded for cuda:0, use_fp16 = True.
+Requested to load SDXLClipModel
+Requested to load GPT2LMHeadModel
+Loading 2 new models
+Processing prompts ...
+Preparing Fooocus text #1 ...
+[Prompt Expansion] blue, beautiful, cinematic, elegant, intricate, highly detailed, extremely, sharp focus, fine detail, sacred light, dramatic ambient glowing, epic composition, magical atmosphere, iconic, deep color, very inspirational, original, full colors, magic, perfect, complex, vibrant, amazing, symmetry, clear, superior, unique, great, fantastic, marvelous, awesome, thought
+Preparing Fooocus text #2 ...
+[Prompt Expansion] blue, beautiful, detailed, intricate detail, symmetry, light, elegant, novel, warm color, complimentary colors, romantic, pretty, glowing, sharp focus, epic, coherent, cute, best, creative, cinematic, highly colorful, artistic, complex, cool, vibrant, iconic, fine, charming, joyful, enhanced, loving, attractive, lovely, atmosphere, crisp
+Encoding positive #1 ...
+Encoding positive #2 ...
+Encoding negative #1 ...
+Encoding negative #2 ...
+VAE Inpaint encoding ...
+VAE Candidate: <ldm_patched.modules.sd.VAE object at 0x7fe4724d6410> None
+Requested to load AutoencoderKL
+Loading 1 new model
+VAE encoding ...
+Final resolution is (2400, 1720), latent is (1216, 832).
+[Parameters] Denoising Strength = 1
+[Parameters] Initial Latent shape: Image Space (1216, 832)
+Preparation time: 60.56 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.02916753850877285, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+unload clone 3
+100%
+30/30 [00:30<00:00, 1.08s/it]
+/usr/local/lib/python3.10/dist-packages/torchsde/_brownian/brownian_interval.py:594: UserWarning: Should have tb<=t1 but got tb=14.614643096923828 and t1=14.614643.
+  warnings.warn(f"Should have {tb_name}<=t1 but got {tb_name}={tb} and t1={self._end}.")
+Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+/usr/local/lib/python3.10/dist-packages/torchsde/_brownian/brownian_interval.py:585: UserWarning: Should have ta>=t0 but got ta=0.02916753850877285 and t0=0.029168.
+  warnings.warn(f"Should have ta>=t0 but got ta={ta} and t0={self._start}.")
+Current task <inpaint_worker.InpaintWorker object at 0x7fe4dfe25f30>
+2024-04-11 /content/Fooocus/monorepo/outputs/2024-04-11/2024-04-11_02-17-54_8355.PNG 2024-04-11_02-17-54_8355.PNG
+Generating and saving time: 39.74 seconds
+[Sampler] refiner_swap_method = joint
+[Sampler] sigma_min = 0.02916753850877285, sigma_max = 14.614643096923828
+Requested to load SDXL
+Loading 1 new model
+unload clone 1
+100%
+30/30 [00:30<00:00, 1.11s/it]
+Requested to load SDXL
+Loading 1 new model
+unload clone 0
+Refiner Swapped
+Current task <inpaint_worker.InpaintWorker object at 0x7fe4dfe25f30>
+2024-04-11 /content/Fooocus/monorepo/outputs/2024-04-11/2024-04-11_02-18-32_9586.PNG 2024-04-11_02-18-32_9586.PNG
+Generating and saving time: 38.60 seconds

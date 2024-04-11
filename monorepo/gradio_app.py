@@ -134,7 +134,7 @@ def load_inpaint_images(inpaint_input_image, inpaint_mask_image_upload, inpaint_
         inpaint_head_model_path, inpaint_patch_model_path = downloading_inpaint_models()
         base_model_additional_loras = [(inpaint_patch_model_path, 1.0)]
         print(f'[Inpaint] Current inpaint model is {inpaint_patch_model_path}')
-        if refiner_model_name == 'None':
+        if str(refiner_model_name) == 'None':
             use_synthetic_refiner = True
             refiner_switch = 0.8
     return inpaint_image, inpaint_mask, inpaint_head_model_path, inpaint_patch_model_path, \
@@ -284,8 +284,7 @@ def inpaint_image(
     print(f'[Parameters] Sampler = {sampler_name} - {scheduler_name}')
     print(f'[Parameters] Steps = {steps} - {switch}')
 
-    tasks, final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", style_selections=style_selections, cfg_scale=guidance_scale)
-    print(tasks)
+    tasks, final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion = expand_prompt(prompt, negative_prompt, num_images, base_model_name=".cache/sd_xl_turbo_1.0_fp16.safetensors", base_model_additional_loras=base_model_additional_loras, style_selections=style_selections, cfg_scale=guidance_scale)
 
     denoising_strength = inpaint_strength
     inpaint_respective_field = 0
@@ -458,7 +457,7 @@ with gr.Blocks() as demo:
         inpaint_mask_image = grh.Image(label='Mask Upload', source='upload', type='numpy', height=500, visible=True)
     with gr.Row():
         steps_count = gr.Slider(minimum=1, maximum=200, value=30, step=1, label="Steps")
-        refiner_switch = gr.Slider(label='Refiner Switch At', minimum=0.1, maximum=1.0, step=0.0001,
+        refiner_switch = gr.Slider(label='Refiner Switch At', minimum=0.1, maximum=1.0, step=0.0001, value=0.8,
                                                info='Use 0.4 for SD1.5 realistic models; '
                                                     'or 0.667 for SD1.5 anime models; '
                                                     'or 0.8 for XL-refiners; '
