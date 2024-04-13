@@ -91,7 +91,6 @@ def prepare_sampling(model, noise_shape, positive, negative, noise_mask):
 
 
 def sample(model, noise, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, disable_noise=False, start_step=None, last_step=None, force_full_denoise=False, noise_mask=None, sigmas=None, callback=None, disable_pbar=False, seed=None):
-    print("P", model.patches.keys())
     real_model, positive_copy, negative_copy, noise_mask, models = prepare_sampling(model, noise.shape, positive, negative, noise_mask)
 
     noise = noise.to(model.load_device)
