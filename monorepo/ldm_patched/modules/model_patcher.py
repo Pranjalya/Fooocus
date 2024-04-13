@@ -213,8 +213,6 @@ class ModelPatcher:
         return self.model
 
     def calculate_weight(self, patches, weight, key):
-        print(p[1][0])
-        print(p[2])
         for p in patches:
             alpha = p[0]
             v = p[1]

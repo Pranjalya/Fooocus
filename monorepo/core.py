@@ -116,8 +116,6 @@ class StableDiffusionModel:
                 for item in lora_clip:
                     if item not in loaded_keys:
                         print("CLIP LoRA key skipped: ", item)
-            
-            print(self.unet_with_lora.patches.keys())
 
 
 @torch.no_grad()
@@ -245,6 +243,8 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
     sample_hijack.current_refiner = refiner
     sample_hijack.refiner_switch_step = refiner_switch
     ldm_patched.modules.samplers.sample = sample_hijack.sample_hacked
+
+    print("7", model.keys())
 
     try:
         samples = ldm_patched.modules.sample.sample(model,
