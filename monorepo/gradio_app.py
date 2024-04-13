@@ -12,7 +12,7 @@ import core
 import ldm_patched.modules.model_management
 import inpaint_worker
 import numpy as np
-import gradio_refresh_loras
+import gradio_hijack as grh
 from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str, resample_image, generate_temp_filename
 from expansion import safe_str, FooocusExpansion
 from pipeline_utils import prepare_text_encoder, clip_encode, clone_cond, get_candidate_vae, process_diffusion
@@ -343,7 +343,9 @@ def inpaint_image(
         latent_fill=latent_fill, latent_mask=latent_mask, latent_swap=latent_swap)
 
     inpaint_parameterized = True
+
     print("3", final_unet.keys())
+
     if inpaint_parameterized:
         final_unet = inpaint_worker.current_task.patch(
             inpaint_head_model_path=inpaint_head_model_path,
@@ -351,6 +353,7 @@ def inpaint_image(
             inpaint_latent_mask=latent_mask,
             model=final_unet
         )
+    
     print("4", final_unet.keys())
 
     inpaint_disable_initial_latent = True
