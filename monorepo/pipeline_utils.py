@@ -191,7 +191,7 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
     decoded_latent = None
 
     if refiner_swap_method == 'joint':
-        print("6", target_unet.keys())
+        print("6", target_unet.patches.keys())
         sampled_latent = core.ksampler(
             model=target_unet,
             refiner=target_refiner_unet,

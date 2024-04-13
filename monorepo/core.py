@@ -244,7 +244,7 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
     sample_hijack.refiner_switch_step = refiner_switch
     ldm_patched.modules.samplers.sample = sample_hijack.sample_hacked
 
-    print("7", model.keys())
+    print("7", model.patches.keys())
 
     try:
         samples = ldm_patched.modules.sample.sample(model,

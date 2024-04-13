@@ -107,7 +107,7 @@ def load_model(filename, base_model_additional_loras):
     if final_expansion is None:
         final_expansion = FooocusExpansion()
 
-    print("1", final_unet.keys())
+    print("1", final_unet.patches.keys())
 
     prepare_text_encoder(final_clip, final_expansion, async_call=True)
     return final_unet, final_vae, final_refiner_unet, final_refiner_vae, final_clip, final_expansion
@@ -196,7 +196,7 @@ def expand_prompt(
     print('Processing prompts ...')
     tasks = []
 
-    print("2", final_unet.keys())
+    print("2", final_unet.patches.keys())
     
     for i in range(image_number):
         task_seed = (seed + i) % (1234569)  # randint is inclusive, % is not
@@ -344,7 +344,7 @@ def inpaint_image(
 
     inpaint_parameterized = True
 
-    print("3", final_unet.keys())
+    print("3", final_unet.patches.keys())
 
     if inpaint_parameterized:
         final_unet = inpaint_worker.current_task.patch(
@@ -354,7 +354,7 @@ def inpaint_image(
             model=final_unet
         )
     
-    print("4", final_unet.keys())
+    print("4", final_unet.patches.keys())
 
     inpaint_disable_initial_latent = True
     initial_latent = None
