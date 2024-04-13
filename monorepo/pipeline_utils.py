@@ -171,8 +171,6 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
 
     print(f'[Sampler] refiner_swap_method = {refiner_swap_method}')
 
-    print("final_unet", target_unet)
-
     if latent is None:
         initial_latent = core.generate_empty_latent(width=width, height=height, batch_size=1)
     else:
