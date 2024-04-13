@@ -218,8 +218,6 @@ class ModelPatcher:
             v = p[1]
             strength_model = p[2]
 
-            print(type(v), type(p), alpha)
-
             if strength_model != 1.0:
                 weight *= strength_model
 
