@@ -95,7 +95,7 @@ def load_model(filename, base_model_additional_loras):
     model_refiner.clip_vision = None
 
     model_base.refresh_loras(base_model_additional_loras)
-    model_refiner.refresh_loras([]])
+    model_refiner.refresh_loras([])
 
     final_unet = model_base.unet_with_lora
     final_clip = model_base.clip_with_lora
