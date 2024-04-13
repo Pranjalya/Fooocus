@@ -152,7 +152,7 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
 
     assert refiner_swap_method in ['joint', 'separate', 'vae']
 
-    print("5", target_unet.keys())
+    print("5", target_unet.patches.keys())
 
     if final_refiner_vae is not None and final_refiner_unet is not None:
         # Refiner Use Different VAE (then it is SD15)
