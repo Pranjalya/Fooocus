@@ -231,9 +231,7 @@ class ModelPatcher:
                 v = v[1]
 
             if patch_type == "fooocus":
-                patch_type = "lora"
-            
-            print(len(v))
+                patch_type = "diff"
 
             if patch_type == "diff":
                 w1 = v[0]
