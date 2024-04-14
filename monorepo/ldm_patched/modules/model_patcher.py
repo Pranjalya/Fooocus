@@ -230,7 +230,10 @@ class ModelPatcher:
                 patch_type = v[0]
                 v = v[1]
 
-            print(patch_type)
+            if patch_type == "fooocus":
+                patch_type = "lora"
+            
+            print(len(v))
 
             if patch_type == "diff":
                 w1 = v[0]
@@ -333,7 +336,6 @@ class ModelPatcher:
                 weight += ((torch.mm(b2, b1) + torch.mm(torch.mm(weight.flatten(start_dim=1), a2), a1)) * alpha).reshape(weight.shape).type(weight.dtype)
             else:
                 print("patch type not recognized", patch_type, key)
-                raise Exception(v)
 
         return weight
 
