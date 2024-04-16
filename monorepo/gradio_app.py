@@ -458,6 +458,15 @@ def trigger_inpaint(
     negative_prompt="",
     num_images=2,
 ):
+    pid = os.getpid()
+    patch_settings[pid] = PatchSettings(
+        sharpness=sharpness,
+        adm_scaler_end=0.3,
+        positive_adm_scale=1.5,
+        negative_adm_scale=0.8,
+        controlnet_softness=0.25,
+        adaptive_cfg=adaptive_cfg
+    )
     output_images = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale, inpaint_strength=inpaint_strength)
     return output_images
 
