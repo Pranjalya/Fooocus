@@ -119,32 +119,6 @@ def get_candidate_vae(steps, switch, denoise=1.0, refiner_swap_method='joint', f
     return final_vae, final_refiner_vae
 
 
-class BrownianTreeNoiseSamplerPatched:
-    transform = None
-    tree = None
-
-    @staticmethod
-    def global_init(x, sigma_min, sigma_max, seed=None, transform=lambda x: x, cpu=False):
-        if ldm_patched.modules.model_management.directml_enabled:
-            cpu = True
-
-        t0, t1 = transform(torch.as_tensor(sigma_min)), transform(torch.as_tensor(sigma_max))
-
-        BrownianTreeNoiseSamplerPatched.transform = transform
-        BrownianTreeNoiseSamplerPatched.tree = BatchedBrownianTree(x, t0, t1, seed, cpu=cpu)
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    @staticmethod
-    def __call__(sigma, sigma_next):
-        transform = BrownianTreeNoiseSamplerPatched.transform
-        tree = BrownianTreeNoiseSamplerPatched.tree
-
-        t0, t1 = transform(torch.as_tensor(sigma)), transform(torch.as_tensor(sigma_next))
-        return tree(t0, t1) / (t1 - t0).abs().sqrt()
-
-
 @torch.no_grad()
 @torch.inference_mode()
 def process_diffusion(positive_cond, negative_cond, steps, switch, width, height, image_seed, callback, sampler_name, scheduler_name, latent=None, denoise=1.0, tiled=False, cfg_scale=7.0, refiner_swap_method='joint', disable_preview=False, final_unet=None, final_vae=None, final_refiner_unet=None, final_refiner_vae=None, final_clip=None):
@@ -187,7 +161,7 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
         initial_latent['samples'].to(ldm_patched.modules.model_management.get_torch_device()),
         sigma_min, sigma_max, seed=image_seed, cpu=False)
 
-    ldm_patched.k_diffusion.sampling.BrownianTreeNoiseSampler = BrownianTreeNoiseSamplerPatched
+    ldm_patched.k_diffusion.sampling.BrownianTreeNoiseSampler = patch.BrownianTreeNoiseSamplerPatched
 
     decoded_latent = None
 
