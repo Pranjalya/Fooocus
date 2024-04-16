@@ -293,6 +293,39 @@ def sdxl_encode_adm_patched(self, **kwargs):
     return final_adm
 
 
+def patched_KSamplerX0Inpaint_forward(self, x, sigma, uncond, cond, cond_scale, denoise_mask, model_options={}, seed=None):
+    if inpaint_worker.current_task is not None:
+        latent_processor = self.inner_model.inner_model.process_latent_in
+        inpaint_latent = latent_processor(inpaint_worker.current_task.latent).to(x)
+        inpaint_mask = inpaint_worker.current_task.latent_mask.to(x)
+
+        if getattr(self, 'energy_generator', None) is None:
+            # avoid bad results by using different seeds.
+            MAX_SEED = 2**63 - 1
+            self.energy_generator = torch.Generator(device='cpu').manual_seed((seed + 1) % MAX_SEED)
+
+        energy_sigma = sigma.reshape([sigma.shape[0]] + [1] * (len(x.shape) - 1))
+        current_energy = torch.randn(
+            x.size(), dtype=x.dtype, generator=self.energy_generator, device="cpu").to(x) * energy_sigma
+        x = x * inpaint_mask + (inpaint_latent + current_energy) * (1.0 - inpaint_mask)
+
+        out = self.inner_model(x, sigma,
+                               cond=cond,
+                               uncond=uncond,
+                               cond_scale=cond_scale,
+                               model_options=model_options,
+                               seed=seed)
+
+        out = out * inpaint_mask + inpaint_latent * (1.0 - inpaint_mask)
+    else:
+        out = self.inner_model(x, sigma,
+                               cond=cond,
+                               uncond=uncond,
+                               cond_scale=cond_scale,
+                               model_options=model_options,
+                               seed=seed)
+    return out
+
 
 def timed_adm(y, timesteps):
     if isinstance(y, torch.Tensor) and int(y.dim()) == 2 and int(y.shape[1]) == 5632:
