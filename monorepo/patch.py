@@ -5,7 +5,7 @@ import math
 import ldm_patched.modules.model_base
 import ldm_patched.ldm.modules.diffusionmodules.openaimodel
 import ldm_patched.modules.model_management
-import modules.anisotropic as anisotropic
+import anisotropic
 import ldm_patched.ldm.modules.attention
 import ldm_patched.k_diffusion.sampling
 import ldm_patched.modules.sd1_clip
