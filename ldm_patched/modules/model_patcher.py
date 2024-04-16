@@ -230,8 +230,6 @@ class ModelPatcher:
                 patch_type = v[0]
                 v = v[1]
 
-            print(patch_type)
-
             if patch_type == "diff":
                 w1 = v[0]
                 if alpha != 0.0:
