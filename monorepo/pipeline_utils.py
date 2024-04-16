@@ -152,8 +152,6 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
 
     assert refiner_swap_method in ['joint', 'separate', 'vae']
 
-    print("5", target_unet.patches.keys())
-
     if final_refiner_vae is not None and final_refiner_unet is not None:
         # Refiner Use Different VAE (then it is SD15)
         if denoise > 0.9:
@@ -184,6 +182,7 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
     sigma_max = float(sigma_max.cpu().numpy())
     print(f'[Sampler] sigma_min = {sigma_min}, sigma_max = {sigma_max}')
 
+    ldm_patched.k_diffusion.sampling.BrownianTreeNoiseSampler = patch.BrownianTreeNoiseSamplerPatched
     BrownianTreeNoiseSamplerPatched.global_init(
         initial_latent['samples'].to(ldm_patched.modules.model_management.get_torch_device()),
         sigma_min, sigma_max, seed=image_seed, cpu=False)
@@ -191,7 +190,6 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
     decoded_latent = None
 
     if refiner_swap_method == 'joint':
-        print("6", target_unet.patches.keys())
         sampled_latent = core.ksampler(
             model=target_unet,
             refiner=target_refiner_unet,
