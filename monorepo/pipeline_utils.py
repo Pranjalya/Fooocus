@@ -1,5 +1,6 @@
 import torch
 import core
+import patch
 import ldm_patched.modules.model_management
 from ldm_patched.k_diffusion.sampling import BatchedBrownianTree
 
