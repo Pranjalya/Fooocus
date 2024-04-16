@@ -16,6 +16,9 @@ import gradio_hijack as grh
 from utils import erode_or_dilate, HWC3, apply_wildcards, apply_arrays, apply_style, remove_empty_str, resample_image, generate_temp_filename
 from expansion import safe_str, FooocusExpansion
 from pipeline_utils import prepare_text_encoder, clip_encode, clone_cond, get_candidate_vae, process_diffusion
+from patch import PatchSettings, patch_settings, patch_all
+
+patch_all()
 
 MODEL_DIR = ".cache"
 os.makedirs(MODEL_DIR, exist_ok=True)
