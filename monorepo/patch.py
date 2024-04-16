@@ -224,6 +224,8 @@ def compute_cfg(uncond, cond, cfg_scale, t):
 
 def patched_sampling_function(model, x, timestep, uncond, cond, cond_scale, model_options=None, seed=None):
     pid = os.getpid()
+    if pid not in patch_settings:
+        patch_settings[pid] = patch_settings[0]
 
     if math.isclose(cond_scale, 1.0) and not model_options.get("disable_cfg1_optimization", False):
         final_x0 = calc_cond_uncond_batch(model, cond, None, x, timestep, model_options)[0]
@@ -268,6 +270,8 @@ def sdxl_encode_adm_patched(self, **kwargs):
     target_width = width
     target_height = height
     pid = os.getpid()
+    if pid not in patch_settings:
+        patch_settings[pid] = patch_settings[0]
 
     if kwargs.get("prompt_type", "") == "negative":
         width = float(width) * patch_settings[pid].negative_adm_scale

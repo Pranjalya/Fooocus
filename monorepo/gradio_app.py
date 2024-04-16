@@ -467,6 +467,7 @@ def trigger_inpaint(
         controlnet_softness=0.25,
         adaptive_cfg=adaptive_cfg
     )
+    patch_settings[0] = patch_settings[pid]
     output_images = inpaint_image(inpaint_input_image, inpaint_mask_image, inpaint_erode_or_dilate, steps_count, refiner_switch, prompt, negative_prompt, sampler_name=sampler_name, scheduler_name=scheduler_name, style_selections=style_selections, num_images=num_images, guidance_scale=guidance_scale, inpaint_strength=inpaint_strength)
     return output_images
 
