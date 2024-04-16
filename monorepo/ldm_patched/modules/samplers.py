@@ -693,6 +693,8 @@ class KSampler:
         if sigmas is None:
             sigmas = self.sigmas
 
+        print("SIGMAS", sigmas)
+
         if last_step is not None and last_step < (len(sigmas) - 1):
             sigmas = sigmas[:last_step + 1]
             if force_full_denoise:
